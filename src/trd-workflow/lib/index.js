@@ -3,32 +3,60 @@
  *
  * @module trd-workflow/lib
  * @description Production-ready TRD workflow enhancement library
- * Provides checkpoint injection, interval calculation, and commit template generation.
- * @version 1.0.0
+ * Provides checkpoint injection, interval calculation, commit template generation,
+ * task type detection, agent delegation, quality gates, and workflow section generation.
+ * @version 1.1.0
  * @created 2025-12-02
- * @related TRD-WORKFLOW-001, Sprint 2.1
+ * @related TRD-WORKFLOW-001, Sprint 2.1 & Sprint 2.2
  */
 
-// Checkpoint Injection (TASK-013)
+// Sprint 2.1 - Checkpoint Injection (TASK-013)
 export {
   injectWorkflowTasks,
   getCheckpointTask,
   validateCheckpoints
 } from './checkpoint-injector.js';
 
-// Interval Calculation (TASK-014)
+// Sprint 2.1 - Interval Calculation (TASK-014)
 export {
   calculateCheckpointInterval,
   explainStrategy
 } from './interval-calculator.js';
 
-// Commit Template Generation (TASK-015)
+// Sprint 2.1 - Commit Template Generation (TASK-015)
 export {
   generateCommitTemplates,
   renderCommitMessage,
   formatCommitMessage,
   validateCommitMessage
 } from './commit-template-generator.js';
+
+// Sprint 2.2 - Task Type Detection (TASK-018)
+export {
+  analyzeTaskTypes,
+  detectTaskType
+} from './task-type-detector.js';
+
+// Sprint 2.2 - Delegation Generation (TASK-019)
+export {
+  generateDelegationPatterns,
+  formatDelegationTable,
+  formatCoordinationNeeds
+} from './delegation-generator.js';
+
+// Sprint 2.2 - Quality Gate Generation (TASK-020)
+export {
+  generateQualityGates,
+  formatQualityGateChecklist,
+  formatQualityGatesSection,
+  validateGateCompletion
+} from './quality-gate-generator.js';
+
+// Sprint 2.2 - Workflow Section Generation (TASK-017)
+export {
+  generateWorkflowSection,
+  validateTRDContext
+} from './workflow-section-generator.js';
 
 /**
  * Main API: Inject workflow tasks with automatic interval calculation
@@ -81,6 +109,31 @@ export {
  * });
  */
 
+/**
+ * Utility: Generate complete workflow section for TRD
+ *
+ * @param {Object} trdContext - TRD context object
+ * @param {Object} [config={}] - Generation configuration
+ * @returns {Object} Complete workflow section with markdown and analysis
+ *
+ * @example
+ * import { generateWorkflowSection } from '@fortium/ai-mesh/trd-workflow/lib';
+ *
+ * const workflow = generateWorkflowSection({
+ *   trdId: 'TRD-WORKFLOW-001',
+ *   title: 'Workflow Enhancement System',
+ *   tasks: [...],
+ *   phases: [...],
+ *   sprints: [...]
+ * }, {
+ *   executionCommand: '/implement-trd',
+ *   includeComplexityAnalysis: true,
+ *   includeDelegation: true,
+ *   includeQualityGates: true
+ * });
+ * // => { markdown: '## Workflow...', analysis: {...}, metadata: {...} }
+ */
+
 // Version metadata
-export const VERSION = '1.0.0';
-export const PHASE = 'Sprint 2.1 - Production Integration';
+export const VERSION = '1.1.0';
+export const PHASE = 'Sprint 2.2 - Workflow Section Generation';
