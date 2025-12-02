@@ -1,0 +1,422 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fortium.dev/schemas/trd-workflow/prd-metadata/v1",
+  "title": "PRD Metadata Configuration Schema",
+  "description": "JSON Schema for PRD YAML frontmatter workflow configuration",
+  "type": "object",
+  "properties": {
+    "workflow": {
+      "type": "object",
+      "description": "TRD workflow generation configuration",
+      "properties": {
+        "checkpoint_frequency": {
+          "description": "Frequency for git checkpoint tasks",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": ["sprint", "phase", "manual"],
+              "description": "Predefined checkpoint frequency"
+            },
+            {
+              "type": "number",
+              "minimum": 1,
+              "description": "Custom checkpoint frequency by task count"
+            }
+          ],
+          "default": "sprint"
+        },
+        "execution_command": {
+          "type": "string",
+          "enum": [
+            "/implement-trd",
+            "/orchestrate-tasks",
+            "/build"
+          ],
+          "default": "/implement-trd",
+          "description": "Recommended command for TRD execution"
+        },
+        "quality_gates": {
+          "type": "object",
+          "description": "Quality gate configurations",
+          "properties": {
+            "sprint": {
+              "type": "object",
+              "description": "Sprint-level quality gates",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Enable sprint quality gates"
+                },
+                "gates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "type"],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Quality gate name"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "test_coverage",
+                          "security_scan",
+                          "performance_check",
+                          "code_review",
+                          "documentation",
+                          "custom"
+                        ],
+                        "description": "Type of quality gate"
+                      },
+                      "threshold": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Threshold value (e.g., 80 for 80% coverage)"
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Whether this gate must pass"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Gate description and criteria"
+                      }
+                    }
+                  },
+                  "default": [
+                    {
+                      "name": "Unit Test Coverage",
+                      "type": "test_coverage",
+                      "threshold": 80,
+                      "required": true
+                    }
+                  ]
+                }
+              }
+            },
+            "phase": {
+              "type": "object",
+              "description": "Phase-level quality gates",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "gates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "type"],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "test_coverage",
+                          "security_scan",
+                          "performance_check",
+                          "code_review",
+                          "documentation",
+                          "integration_test",
+                          "custom"
+                        ]
+                      },
+                      "threshold": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "default": [
+                    {
+                      "name": "Integration Test Coverage",
+                      "type": "integration_test",
+                      "threshold": 70,
+                      "required": true
+                    }
+                  ]
+                }
+              }
+            },
+            "final": {
+              "type": "object",
+              "description": "Final quality gates before completion",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "gates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "type"],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "test_coverage",
+                          "security_scan",
+                          "performance_check",
+                          "code_review",
+                          "documentation",
+                          "integration_test",
+                          "e2e_test",
+                          "accessibility",
+                          "custom"
+                        ]
+                      },
+                      "threshold": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "required": {
+                        "type": "boolean",
+                        "default": true
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "default": [
+                    {
+                      "name": "Full Test Suite",
+                      "type": "test_coverage",
+                      "threshold": 85,
+                      "required": true
+                    },
+                    {
+                      "name": "Security Audit",
+                      "type": "security_scan",
+                      "required": true
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "git_workflow": {
+          "type": "object",
+          "description": "Git workflow configuration",
+          "properties": {
+            "branch_naming": {
+              "type": "object",
+              "description": "Branch naming conventions",
+              "properties": {
+                "pattern": {
+                  "type": "string",
+                  "default": "feature/{trd-id}-{description}",
+                  "description": "Branch naming pattern template"
+                },
+                "description_format": {
+                  "type": "string",
+                  "enum": ["kebab-case", "snake_case", "camelCase"],
+                  "default": "kebab-case",
+                  "description": "Format for description in branch names"
+                },
+                "max_length": {
+                  "type": "number",
+                  "minimum": 20,
+                  "maximum": 100,
+                  "default": 50,
+                  "description": "Maximum branch name length"
+                }
+              }
+            },
+            "commit_conventions": {
+              "type": "object",
+              "description": "Commit message conventions",
+              "properties": {
+                "format": {
+                  "type": "string",
+                  "enum": ["conventional", "custom"],
+                  "default": "conventional",
+                  "description": "Commit message format standard"
+                },
+                "require_scope": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Require scope in commit messages"
+                },
+                "require_body": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Require body in commit messages"
+                },
+                "include_task_ids": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Include task IDs in commit messages"
+                },
+                "include_trd_reference": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Include TRD reference in commit messages"
+                }
+              }
+            },
+            "checkpoint_strategy": {
+              "type": "object",
+              "description": "Git checkpoint strategy",
+              "properties": {
+                "auto_checkpoint": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Automatically create checkpoint tasks"
+                },
+                "checkpoint_after_sprint": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Create checkpoint after each sprint"
+                },
+                "checkpoint_after_phase": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Create checkpoint after each phase"
+                },
+                "custom_checkpoints": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["after_task"],
+                    "properties": {
+                      "after_task": {
+                        "type": "string",
+                        "description": "Task ID after which to create checkpoint"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Checkpoint description"
+                      }
+                    }
+                  },
+                  "description": "Custom checkpoint locations"
+                }
+              }
+            }
+          }
+        },
+        "delegation": {
+          "type": "object",
+          "description": "Multi-agent delegation patterns",
+          "properties": {
+            "enable_auto_delegation": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable automatic agent delegation based on task type"
+            },
+            "patterns": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["task_type", "agent"],
+                "properties": {
+                  "task_type": {
+                    "type": "string",
+                    "description": "Type of task (e.g., 'frontend', 'backend', 'infrastructure')"
+                  },
+                  "agent": {
+                    "type": "string",
+                    "description": "Agent to delegate to (e.g., 'frontend-developer', 'backend-developer')"
+                  },
+                  "conditions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Conditions for applying this delegation pattern"
+                  }
+                }
+              },
+              "description": "Task type to agent delegation mappings"
+            }
+          }
+        },
+        "performance": {
+          "type": "object",
+          "description": "Performance configuration for TRD generation",
+          "properties": {
+            "max_generation_time": {
+              "type": "number",
+              "minimum": 1,
+              "default": 30,
+              "description": "Maximum TRD generation time in seconds"
+            },
+            "cache_templates": {
+              "type": "boolean",
+              "default": true,
+              "description": "Cache compiled templates for performance"
+            },
+            "parallel_processing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable parallel processing for large TRDs"
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "General PRD metadata",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "PRD version"
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "description": "PRD creation date"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date",
+          "description": "Last update date"
+        },
+        "author": {
+          "type": "string",
+          "description": "PRD author"
+        },
+        "stakeholders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of stakeholders"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "PRD priority level"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "review", "approved", "in-progress", "completed"],
+          "description": "PRD status"
+        }
+      }
+    }
+  }
+}

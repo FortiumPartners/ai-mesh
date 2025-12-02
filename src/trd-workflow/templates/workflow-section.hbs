@@ -1,0 +1,157 @@
+{{!--
+  Workflow Section Template - Handlebars Format
+
+  Variables:
+  - trd_id: TRD identifier
+  - task_count: Total number of tasks
+  - sprint_count: Number of sprints
+  - phase_count: Number of phases (optional)
+  - execution_command: Recommended execution command
+  - recommended_approach: Approach description
+  - quality_gates: Array of quality gate objects
+  - delegation_patterns: Array of delegation pattern objects
+  - git_checkpoints: Array of checkpoint objects
+  - is_simple_trd: Boolean (task_count < 20)
+  - is_complex_trd: Boolean (task_count >= 20)
+  - branch_pattern: Git branch naming pattern
+
+  Usage:
+  This template generates the workflow section for TRD documents,
+  with conditional rendering for simple vs. complex TRDs.
+--}}
+## Implementation Workflow
+
+### Execution Approach
+
+**TRD Complexity**: {{#if is_simple_trd}}Simple{{else}}{{#if is_complex_trd}}Complex{{else}}Standard{{/if}}{{/if}} ({{task_count}} tasks across {{sprint_count}} sprint{{#if (gt sprint_count 1)}}s{{/if}}{{#if phase_count}}, {{phase_count}} phase{{#if (gt phase_count 1)}}s{{/if}}{{/if}})
+
+**Recommended Execution Command**: `{{execution_command}}`
+
+{{#if is_simple_trd}}
+**Recommended Approach**: {{recommended_approach}}
+
+For this simple TRD (< 20 tasks), you can execute all tasks in sequence using the standard implementation workflow. Git checkpoints are recommended at sprint boundaries for logical commit grouping.
+{{else}}
+**Recommended Approach**: {{recommended_approach}}
+
+For this {{#if is_complex_trd}}complex{{else}}standard{{/if}} TRD ({{task_count}} tasks), use the orchestrated multi-agent approach with:
+- Sprint-level quality gates after each sprint completion
+- Git checkpoints at phase boundaries for clear progress tracking
+- Multi-agent delegation based on task type (see delegation patterns below)
+- Incremental testing and validation at each checkpoint
+{{/if}}
+
+### Git Workflow
+
+**Branch Naming**: `{{branch_pattern}}`
+
+**Commit Strategy**: Use conventional commits with TRD task references
+
+{{#if git_checkpoints}}
+**Git Checkpoints** ({{git_checkpoints.length}} total):
+{{#each git_checkpoints}}
+
+#### Checkpoint {{@index}}: {{this.name}}
+- **After**: {{this.after_task}}
+{{#if this.sprint_number}}- **Sprint**: {{this.sprint_number}}{{/if}}
+{{#if this.phase_number}}- **Phase**: {{this.phase_number}}{{/if}}
+- **Type**: {{this.type}}
+- **Commit Template**:
+  ```
+  {{this.commit_template}}
+  ```
+{{#if this.quality_gates}}
+- **Quality Gates Before Commit**:
+{{#each this.quality_gates}}
+  - {{this.name}}{{#if this.threshold}} (≥{{this.threshold}}%){{/if}}
+{{/each}}
+{{/if}}
+{{/each}}
+{{else}}
+**No automatic checkpoints configured**. Create commits at logical completion points.
+{{/if}}
+
+### Quality Gates
+
+{{#if quality_gates}}
+The following quality gates must be satisfied at specified checkpoints:
+
+{{#each quality_gates}}
+#### {{this.level}} Quality Gate{{#if this.checkpoint_id}} (Checkpoint: {{this.checkpoint_id}}){{/if}}
+
+{{#each this.gates}}
+- **{{this.name}}**: {{this.description}}
+  - Type: {{this.type}}
+  {{#if this.threshold}}- Threshold: ≥{{this.threshold}}%{{/if}}
+  - Required: {{#if this.required}}Yes{{else}}No{{/if}}
+{{/each}}
+
+{{/each}}
+{{else}}
+**Standard quality gates apply**:
+- Unit test coverage ≥80%
+- Integration test coverage ≥70%
+- Security scan with no high-severity findings
+- Code review approval before PR merge
+{{/if}}
+
+### Multi-Agent Delegation Patterns
+
+{{#if delegation_patterns}}
+Tasks in this TRD should be delegated to specialized agents based on type:
+
+{{#each delegation_patterns}}
+#### {{this.task_type}} Tasks
+- **Delegate to**: `{{this.agent}}`
+- **Task IDs**: {{#each this.task_ids}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+{{#if this.handoff_context}}
+- **Context Required**: {{this.handoff_context}}
+{{/if}}
+{{#if this.quality_requirements}}
+- **Quality Requirements**: {{this.quality_requirements}}
+{{/if}}
+
+{{/each}}
+{{else}}
+Use standard agent delegation based on task context:
+- **Frontend tasks** → `frontend-developer`
+- **Backend tasks** → `backend-developer`
+- **Infrastructure tasks** → `infrastructure-developer`
+- **Testing tasks** → `test-runner`, `playwright-tester`
+- **Documentation tasks** → `documentation-specialist`
+{{/if}}
+
+### Execution Steps
+
+1. **Setup**: Create feature branch using pattern above
+2. **Sprint Execution**: Execute tasks in sprint order
+   {{#if is_complex_trd}}- Use `/orchestrate-tasks` for multi-agent coordination
+   {{/if}}- Complete all tasks before sprint checkpoint
+   - Run quality gates at sprint completion
+3. **Git Checkpoints**: Commit at designated checkpoint tasks
+   - Use conventional commit format with task references
+   - Include quality gate validation results
+   - Tag sprint completion commits
+4. **Review & Merge**: After final checkpoint
+   - Run complete test suite
+   - Execute security scan
+   - Create PR with TRD reference
+   - Obtain code review approval
+
+### Performance Expectations
+
+{{#if is_simple_trd}}
+- **Estimated Duration**: {{sprint_count}} sprint{{#if (gt sprint_count 1)}}s{{/if}} ({{multiply sprint_count 2}} weeks)
+- **Commit Frequency**: {{git_checkpoints.length}} checkpoint commit{{#if (gt git_checkpoints.length 1)}}s{{/if}}
+- **Review Cycles**: 1-2 (simple workflow)
+{{else}}
+- **Estimated Duration**: {{sprint_count}} sprint{{#if (gt sprint_count 1)}}s{{/if}}{{#if phase_count}} across {{phase_count}} phase{{#if (gt phase_count 1)}}s{{/if}}{{/if}}
+- **Commit Frequency**: {{git_checkpoints.length}} checkpoint commit{{#if (gt git_checkpoints.length 1)}}s{{/if}} + incremental commits within sprints
+- **Review Cycles**: 2-3 (incremental reviews at phase boundaries)
+{{/if}}
+- **Performance Budget**: <10% overhead for workflow management
+- **Success Criteria**: All quality gates pass, all tasks completed with checkboxes marked
+
+---
+
+**Note**: This workflow section was automatically generated based on TRD analysis. Adjust checkpoint frequency and quality gates as needed for your specific project requirements.

@@ -1,0 +1,444 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fortium.dev/schemas/trd-workflow/commit-template/v1",
+  "title": "Commit Message Template Schema",
+  "description": "JSON Schema for validating conventional commit message templates with TRD integration",
+  "type": "object",
+  "required": [
+    "templateId",
+    "version",
+    "format",
+    "variables",
+    "templates"
+  ],
+  "properties": {
+    "templateId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique identifier for the template set in kebab-case"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200,
+      "description": "Brief description of the template set's purpose"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["handlebars", "mustache"],
+      "description": "Template rendering engine format"
+    },
+    "variables": {
+      "type": "object",
+      "description": "Available template variables and their definitions",
+      "required": [
+        "commit_type",
+        "commit_scope",
+        "commit_subject"
+      ],
+      "properties": {
+        "commit_type": {
+          "type": "object",
+          "required": ["description", "allowed_values"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the commit_type variable"
+            },
+            "allowed_values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "feat",
+                  "fix",
+                  "docs",
+                  "style",
+                  "refactor",
+                  "test",
+                  "chore",
+                  "perf",
+                  "ci",
+                  "build",
+                  "revert"
+                ]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "default": {
+              "type": "string",
+              "description": "Default commit type if not specified"
+            }
+          }
+        },
+        "commit_scope": {
+          "type": "object",
+          "required": ["description"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string",
+              "description": "Regex pattern for valid scope values"
+            },
+            "optional": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether scope is optional in commit messages"
+            }
+          }
+        },
+        "commit_subject": {
+          "type": "object",
+          "required": ["description", "constraints"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "constraints": {
+              "type": "object",
+              "properties": {
+                "max_length": {
+                  "type": "number",
+                  "minimum": 50,
+                  "maximum": 100,
+                  "default": 72,
+                  "description": "Maximum character length for subject line"
+                },
+                "case": {
+                  "type": "string",
+                  "enum": ["lowercase", "sentence", "any"],
+                  "default": "lowercase",
+                  "description": "Case requirement for subject line"
+                },
+                "end_with_period": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Whether subject should end with a period"
+                }
+              }
+            }
+          }
+        },
+        "commit_body": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "optional": {
+              "type": "boolean",
+              "default": true
+            },
+            "wrap_at": {
+              "type": "number",
+              "default": 72,
+              "description": "Character width for body text wrapping"
+            }
+          }
+        },
+        "completed_tasks": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string",
+              "description": "Template for rendering task items"
+            }
+          }
+        },
+        "trd_id": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string",
+              "default": "^TRD-[A-Z0-9-]+$",
+              "description": "Regex pattern for valid TRD IDs"
+            }
+          }
+        },
+        "sprint_number": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["number", "string"],
+              "default": "number"
+            }
+          }
+        },
+        "phase_number": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["number", "string"],
+              "default": "number"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom variables can be defined with their own schema"
+      }
+    },
+    "templates": {
+      "type": "object",
+      "description": "Commit message templates by type",
+      "required": ["default"],
+      "properties": {
+        "default": {
+          "type": "object",
+          "required": ["template"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of when to use this template"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10,
+              "description": "The Handlebars/Mustache template string"
+            },
+            "example": {
+              "type": "string",
+              "description": "Example of rendered commit message"
+            }
+          }
+        },
+        "feat": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "fix": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "docs": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "refactor": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "test": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "chore": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "sprint_checkpoint": {
+          "type": "object",
+          "description": "Template for sprint completion commits",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        },
+        "phase_checkpoint": {
+          "type": "object",
+          "description": "Template for phase completion commits",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 10
+            },
+            "example": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom commit type templates"
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Validation rules for commit messages",
+      "properties": {
+        "enforce_type": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require valid commit type"
+        },
+        "enforce_scope": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require scope in commit messages"
+        },
+        "subject_max_length": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 100,
+          "default": 72
+        },
+        "body_required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require commit body"
+        },
+        "footer_patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "pattern"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Footer type name (e.g., 'breaking-change', 'issue-reference')"
+              },
+              "pattern": {
+                "type": "string",
+                "description": "Regex pattern for this footer type"
+              },
+              "required": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether this footer is required"
+              }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata about the template set",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
