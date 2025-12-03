@@ -33,6 +33,8 @@ class ClaudeInstaller {
         return this.validate(args.slice(1));
       case 'uninstall':
         return this.uninstall(args.slice(1));
+      case 'trd-workflow':
+        return this.trdWorkflow(args.slice(1));
       case '--help':
       case '-h':
       case 'help':
@@ -45,6 +47,12 @@ class ClaudeInstaller {
         this.showHelp();
         process.exit(1);
     }
+  }
+
+  async trdWorkflow(args) {
+    const { TrdWorkflowCommands } = require('./trd-workflow-commands.js');
+    const trdCmd = new TrdWorkflowCommands(this.logger);
+    return trdCmd.run(args);
   }
 
   async install(args) {
@@ -783,11 +791,12 @@ USAGE:
   ai-mesh [COMMAND] [OPTIONS]
 
 COMMANDS:
-  install     Install Claude configuration (default)
-  update      Update existing installation
-  validate    Validate current installation
-  uninstall   Remove Claude configuration
-  help        Show this help message
+  install       Install Claude configuration (default)
+  update        Update existing installation
+  validate      Validate current installation
+  uninstall     Remove Claude configuration
+  trd-workflow  TRD workflow enhancement tools (see: ai-mesh trd-workflow --help)
+  help          Show this help message
 
 INSTALL OPTIONS:
   --tool, -t TOOL     Target tool: 'claude' or 'opencode' (will prompt if not specified)
@@ -807,6 +816,16 @@ EXAMPLES:
   ai-mesh install --dry-run --debug              # Detailed dry-run simulation
   ai-mesh validate
   ai-mesh update
+  ai-mesh trd-workflow inject --input tasks.json --output enhanced.json
+
+TRD WORKFLOW TOOLS:
+  The trd-workflow subcommand provides CLI access to TRD workflow enhancement:
+    • inject      - Inject checkpoint tasks into task breakdown
+    • workflow    - Generate complete workflow section for TRD
+    • complexity  - Analyze task complexity and checkpoint strategy
+    • validate    - Validate TRD structure and content
+
+  For detailed help: ai-mesh trd-workflow --help
 
 DRY-RUN MODE:
   Use --dry-run to preview what changes will be made without actually applying them.
