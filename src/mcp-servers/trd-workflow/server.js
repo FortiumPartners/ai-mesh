@@ -22,6 +22,7 @@ import {
 
 import { registry } from './lib/tool-registry.js';
 import { logger } from './lib/logger.js';
+import { handlers } from './handlers/index.js';
 
 /**
  * Server configuration
@@ -40,6 +41,46 @@ const server = new Server(SERVER_INFO, {
     tools: {}
   }
 });
+
+/**
+ * Register all handlers from handlers directory
+ */
+function registerHandlers() {
+  logger.info(`Registering ${handlers.length} tool handlers`);
+
+  for (const handler of handlers) {
+    try {
+      // Extract tool definition and execute function
+      const { name, description, inputSchema, execute } = handler;
+
+      // Register with tool registry
+      registry.register(
+        {
+          name,
+          description,
+          inputSchema
+        },
+        execute
+      );
+
+      logger.debug(`Registered handler: ${name}`);
+    } catch (error) {
+      logger.error(`Failed to register handler: ${handler.name}`, {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
+
+  logger.info('All handlers registered successfully', {
+    toolCount: registry.stats().totalTools,
+    tools: registry.list().map(t => t.name)
+  });
+}
+
+// Register handlers on startup
+registerHandlers();
 
 /**
  * Handle tool listing requests
