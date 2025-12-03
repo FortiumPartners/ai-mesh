@@ -1,0 +1,32 @@
+{
+  "name": "@fortium/trd-workflow-mcp",
+  "version": "1.0.0",
+  "description": "MCP server exposing TRD workflow library as callable tools for Claude",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "trd-workflow-mcp": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "trd",
+    "workflow",
+    "claude",
+    "ai-mesh"
+  ],
+  "author": "Fortium Partners",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {}
+}
