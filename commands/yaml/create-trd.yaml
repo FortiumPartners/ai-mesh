@@ -72,8 +72,58 @@ workflow:
           title: Implementation Planning
           description: Develop sprint planning with trackable task lists
 
-    - name: Output Management
+    - name: MCP Enhancement (Optional)
       order: 3
+      description: |
+        Optionally use TRD Workflow MCP server tools to enhance TRD generation.
+        Falls back to manual generation if MCP server unavailable.
+      steps:
+        - order: 1
+          title: Check MCP Availability
+          description: Detect if TRD Workflow MCP server is registered and available
+          actions:
+            - Check ~/.claude/mcp/config.json for trd-workflow server
+            - Validate server installation exists
+            - Proceed with MCP tools if available, otherwise skip to manual generation
+
+        - order: 2
+          title: Inject Checkpoints (MCP)
+          description: Use inject_checkpoints tool to add review/validation checkpoints
+          mcp_tool:
+            name: inject_checkpoints
+            usage: |
+              Automatically inject checkpoint tasks into task breakdown:
+              - After major milestones
+              - Before deployments
+              - At integration points
+            fallback: Manually add checkpoint tasks using project patterns
+
+        - order: 3
+          title: Assess Complexity (MCP)
+          description: Use assess_complexity tool to analyze task breakdown
+          mcp_tool:
+            name: assess_complexity
+            usage: |
+              Analyze overall project complexity:
+              - Estimate total hours
+              - Identify high-risk tasks
+              - Suggest sprint organization
+            fallback: Manually estimate complexity based on task estimates
+
+        - order: 4
+          title: Generate Workflow Section (MCP)
+          description: Use generate_workflow_section tool to create execution workflow
+          mcp_tool:
+            name: generate_workflow_section
+            usage: |
+              Generate comprehensive workflow markdown:
+              - Sprint-by-sprint execution plan
+              - Task dependencies and ordering
+              - Checkbox tracking for progress
+            fallback: Manually structure workflow using TRD template patterns
+
+    - name: Output Management
+      order: 4
       steps:
         - order: 1
           title: TRD Creation
@@ -139,3 +189,121 @@ expectedOutput:
 
     - name: Quality Requirements
       description: Security, performance, accessibility, and testing standards
+
+mcp_integration:
+  enabled: true
+  description: |
+    TRD Workflow MCP server integration for enhanced TRD generation.
+    Automatically detects MCP server availability and uses tools when possible.
+    Gracefully falls back to manual workflows if server unavailable.
+
+  tools:
+    - name: inject_checkpoints
+      description: Inject checkpoint tasks into task breakdown
+      usage: |
+        Use to automatically add review/validation checkpoints:
+        - After major milestones (every 3-5 tasks)
+        - Before deployments or releases
+        - At integration points between systems
+        Example: callInjectCheckpoints({ tasks: [...] })
+      input:
+        taskBreakdown: Task breakdown object with tasks array
+        checkpointStrategy: smart | milestone | fixed
+      output: Enhanced breakdown with checkpoint tasks injected
+      timeout: 2000ms
+      fallback: Manually insert checkpoint tasks using project patterns
+
+    - name: generate_workflow_section
+      description: Generate execution workflow section for TRD
+      usage: |
+        Use to create comprehensive workflow markdown:
+        - Sprint-by-sprint execution plan
+        - Task dependencies and ordering
+        - Checkbox tracking for progress monitoring
+        Example: callGenerateWorkflow({ productName, sprints })
+      input:
+        trdContext: Context object with product name and sprint breakdown
+        includeCheckboxes: Boolean to include task checkboxes
+      output: Formatted workflow markdown ready for TRD inclusion
+      timeout: 2000ms
+      fallback: Generate workflow manually using TRD template structure
+
+    - name: assess_complexity
+      description: Analyze complexity of task breakdown
+      usage: |
+        Use to get complexity insights:
+        - Overall project complexity score
+        - Total estimated hours
+        - High-risk task identification
+        - Sprint organization suggestions
+        Example: callAssessComplexity({ tasks: [...] })
+      input:
+        taskBreakdown: Task breakdown with estimates
+      output: Complexity assessment with metrics and recommendations
+      timeout: 2000ms
+      fallback: Manual complexity estimation from task hour estimates
+
+    - name: detect_task_types
+      description: Detect and categorize task types
+      usage: Categorize tasks by type (setup, feature, testing, documentation)
+      input:
+        taskBreakdown: Task breakdown object
+      output: Task categorization with type distribution
+      timeout: 2000ms
+      fallback: Manual task categorization
+
+    - name: generate_delegation_patterns
+      description: Generate agent delegation patterns
+      usage: Create delegation section showing which agents handle which tasks
+      input:
+        taskBreakdown: Task breakdown with agent assignments
+      output: Delegation patterns markdown
+      timeout: 2000ms
+      fallback: Manual delegation pattern documentation
+
+    - name: validate_trd_structure
+      description: Validate TRD structure and completeness
+      usage: |
+        Use to validate generated TRD:
+        - Check all required sections present
+        - Validate task ID format and uniqueness
+        - Verify acceptance criteria completeness
+        Example: callValidateTRD(trdMarkdown)
+      input:
+        trdContent: Complete TRD markdown content
+      output: Validation result with errors/warnings
+      timeout: 2000ms
+      fallback: Manual TRD structure validation
+
+  implementation:
+    check_availability: |
+      Use checkMCPServerAvailable() to detect if TRD Workflow MCP server is registered.
+      Check ~/.claude/mcp/config.json for 'trd-workflow' entry.
+      If available, proceed with MCP-enhanced workflow.
+      If unavailable, use standard manual workflow - no errors or warnings.
+
+    tool_invocation: |
+      Use provided wrapper functions (callInjectCheckpoints, callGenerateWorkflow, etc.)
+      All tools have 2-second timeout for fast fallback.
+      Return null on timeout or error - allows graceful degradation.
+
+    fallback_strategy: |
+      Always provide fallback to manual generation:
+      - If MCP server not registered: Use manual workflow silently
+      - If tool call timeout: Continue with manual generation
+      - If tool returns error: Log warning and use manual approach
+      Never break workflow if MCP unavailable - it's an optional enhancement.
+
+  setup_instructions: |
+    To enable MCP-enhanced TRD generation:
+
+    1. Install TRD Workflow MCP server:
+       cd src/mcp-servers/trd-workflow && npm install
+
+    2. Register with Claude:
+       claude mcp add trd-workflow --scope user -- node /path/to/ai-mesh/src/mcp-servers/trd-workflow/server.js
+
+    3. Verify installation:
+       claude mcp list | grep trd-workflow
+
+    4. Server auto-detected on next /create-trd invocation
