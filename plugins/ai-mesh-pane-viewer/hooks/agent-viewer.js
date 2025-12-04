@@ -98,38 +98,94 @@ let taskCompleted = false;
 let startTime = Date.now();
 let fileSize = 0;
 let pendingTools = new Map(); // Track tool_use_id -> toolName
+let agentTranscriptPath = null;
+let watchingAgentFile = false;
 
-// Watch the transcript file for changes
-function watchTranscript() {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) {
-    console.log(`${colors.yellow}Waiting for transcript...${colors.reset}`);
+// Watch for new agent-*.jsonl files in the transcript directory
+function watchForAgentTranscript() {
+  if (!transcriptPath) {
+    console.log(`${colors.yellow}No transcript path provided.${colors.reset}`);
     return;
   }
 
-  // Get initial file size
-  const stats = fs.statSync(transcriptPath);
-  fileSize = stats.size;
+  const transcriptDir = path.dirname(transcriptPath);
+
+  // Get existing agent files before we start
+  const existingFiles = new Set();
+  try {
+    const files = fs.readdirSync(transcriptDir);
+    files.filter(f => f.startsWith('agent-') && f.endsWith('.jsonl'))
+         .forEach(f => existingFiles.add(f));
+  } catch (e) {
+    console.log(`${colors.yellow}Cannot read transcript directory${colors.reset}`);
+    return;
+  }
+
+  console.log(`${colors.dim}Watching for subagent activity...${colors.reset}`);
+  console.log();
+
+  // Poll for new agent files
+  const checkForNewAgentFile = () => {
+    if (taskCompleted || watchingAgentFile) return;
+
+    try {
+      const files = fs.readdirSync(transcriptDir);
+      const agentFiles = files.filter(f => f.startsWith('agent-') && f.endsWith('.jsonl'));
+
+      for (const file of agentFiles) {
+        if (!existingFiles.has(file)) {
+          // Found a new agent file!
+          agentTranscriptPath = path.join(transcriptDir, file);
+          console.log(`${colors.dim}Found agent transcript: ${file}${colors.reset}`);
+          watchingAgentFile = true;
+          startWatchingAgentFile();
+          return;
+        }
+      }
+    } catch (e) {
+      // Directory might be temporarily unavailable
+    }
+  };
+
+  // Check every 100ms for new agent files
+  setInterval(checkForNewAgentFile, 100);
+}
+
+function startWatchingAgentFile() {
+  if (!agentTranscriptPath || !fs.existsSync(agentTranscriptPath)) {
+    return;
+  }
+
+  // Start from beginning of file
+  fileSize = 0;
 
   // Watch for changes
-  fs.watch(transcriptPath, (eventType) => {
-    if (eventType === 'change') {
-      readNewLines();
-    }
-  });
+  try {
+    fs.watch(agentTranscriptPath, (eventType) => {
+      if (eventType === 'change') {
+        readNewLines();
+      }
+    });
+  } catch (e) {
+    // fs.watch might not be available
+  }
 
   // Also poll periodically as fs.watch can be unreliable
-  setInterval(readNewLines, 200);
+  setInterval(readNewLines, 100);
+
+  // Do initial read
+  readNewLines();
 }
 
 function readNewLines() {
-  if (taskCompleted) return;
+  if (taskCompleted || !agentTranscriptPath) return;
 
   try {
-    const stats = fs.statSync(transcriptPath);
+    const stats = fs.statSync(agentTranscriptPath);
     if (stats.size <= fileSize) return;
 
     // Read new content
-    const fd = fs.openSync(transcriptPath, 'r');
+    const fd = fs.openSync(agentTranscriptPath, 'r');
     const buffer = Buffer.alloc(stats.size - fileSize);
     fs.readSync(fd, buffer, 0, buffer.length, fileSize);
     fs.closeSync(fd);
@@ -196,7 +252,7 @@ printAgentStart();
 taskStarted = true;
 
 if (transcriptPath) {
-  watchTranscript();
+  watchForAgentTranscript();
 } else {
   console.log(`${colors.dim}No transcript path provided. Waiting for messages...${colors.reset}`);
 
