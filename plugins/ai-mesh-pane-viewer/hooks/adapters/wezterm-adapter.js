@@ -96,9 +96,19 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
    */
   async sendKeys(paneId, text) {
     try {
-      // Escape double quotes in text
-      const escaped = text.replace(/"/g, '\\"');
-      execSync(`wezterm cli send-text --pane-id ${paneId} --no-paste "${escaped}"`, { stdio: 'pipe' });
+      // Use spawn with explicit args to avoid shell escaping issues
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('wezterm', [
+        'cli', 'send-text',
+        '--pane-id', String(paneId),
+        '--no-paste',
+        text
+      ], { stdio: 'pipe' });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr ? result.stderr.toString() : 'Unknown error';
+        throw new Error(stderr);
+      }
     } catch (error) {
       throw new Error(`Failed to send text: ${error.message}`);
     }
