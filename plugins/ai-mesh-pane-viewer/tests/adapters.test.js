@@ -71,7 +71,10 @@ describe('TmuxAdapter', () => {
 describe('MultiplexerDetector', () => {
   it('should initialize with adapters', () => {
     const detector = new MultiplexerDetector();
-    expect(detector.adapters).toHaveLength(3);
+    expect(Object.keys(detector.adapters)).toHaveLength(3);
+    expect(detector.adapters.wezterm).toBeDefined();
+    expect(detector.adapters.zellij).toBeDefined();
+    expect(detector.adapters.tmux).toBeDefined();
   });
 
   // TODO: Add tests for detector methods
