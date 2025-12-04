@@ -3,11 +3,25 @@
 /**
  * Agent Viewer
  *
- * Real-time display of subagent activity in a terminal pane.
- * Receives updates via stdin and displays formatted agent status.
+ * Real-time display of subagent activity by tailing Claude transcript files.
+ * Watches the transcript file for tool use and tool result events.
  */
 
+const fs = require('fs');
 const readline = require('readline');
+const path = require('path');
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const getArg = (name) => {
+  const idx = args.indexOf(`--${name}`);
+  return idx !== -1 ? args[idx + 1] : null;
+};
+
+const transcriptPath = getArg('transcript');
+const taskId = getArg('task-id');
+const agentType = getArg('agent') || 'unknown';
+const description = getArg('description') || '';
 
 // ANSI colors
 const colors = {
@@ -22,22 +36,8 @@ const colors = {
   gray: '\x1b[90m'
 };
 
-const agentColors = {
-  'frontend-developer': colors.cyan,
-  'backend-developer': colors.green,
-  'code-reviewer': colors.yellow,
-  'test-runner': colors.blue,
-  'documentation-specialist': colors.magenta,
-  'default': colors.gray
-};
-
-function getAgentColor(agent) {
-  return agentColors[agent] || agentColors.default;
-}
-
-function formatTimestamp(iso) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', { hour12: false });
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour12: false });
 }
 
 function clearScreen() {
@@ -46,73 +46,145 @@ function clearScreen() {
 
 function printHeader() {
   console.log(`${colors.bright}╔════════════════════════════════════════╗${colors.reset}`);
-  console.log(`${colors.bright}║  ${colors.cyan}AI-Mesh Subagent Monitor${colors.reset}${colors.bright}           ║${colors.reset}`);
+  console.log(`${colors.bright}║  ${colors.cyan}AI-Mesh Subagent Monitor${colors.reset}${colors.bright}             ║${colors.reset}`);
   console.log(`${colors.bright}╚════════════════════════════════════════╝${colors.reset}`);
   console.log();
 }
 
-function printAgentStart(msg) {
-  const color = getAgentColor(msg.agent);
-  const time = formatTimestamp(msg.timestamp);
-
-  console.log(`${colors.dim}[${time}]${colors.reset} ${color}${colors.bright}▶ ${msg.agent}${colors.reset}`);
-
-  if (msg.description) {
-    console.log(`  ${colors.dim}Task:${colors.reset} ${msg.description}`);
+function printAgentStart() {
+  const time = formatTime(new Date().toISOString());
+  console.log(`${colors.dim}[${time}]${colors.reset} ${colors.cyan}${colors.bright}▶ ${agentType}${colors.reset}`);
+  if (description) {
+    console.log(`  ${colors.dim}Task:${colors.reset} ${description}`);
   }
-
-  if (msg.promptPreview) {
-    console.log(`  ${colors.dim}Prompt:${colors.reset} ${msg.promptPreview.substring(0, 80)}...`);
-  }
-
   console.log();
 }
 
-function printAgentComplete(msg) {
-  const color = getAgentColor(msg.agent);
-  const time = formatTimestamp(msg.timestamp);
-
-  console.log(`${colors.dim}[${time}]${colors.reset} ${color}✓ ${msg.agent}${colors.reset} ${colors.dim}completed${colors.reset}`);
-
-  if (msg.duration) {
-    console.log(`  ${colors.dim}Duration:${colors.reset} ${msg.duration}`);
+function summarizeInput(toolName, input) {
+  if (!input) return '';
+  switch(toolName) {
+    case 'Read': return input.file_path ? path.basename(input.file_path) : '';
+    case 'Write': return input.file_path ? path.basename(input.file_path) : '';
+    case 'Edit': return input.file_path ? path.basename(input.file_path) : '';
+    case 'Glob': return input.pattern || '';
+    case 'Grep': return `"${input.pattern || ''}"`;
+    case 'Bash': return (input.command || '').substring(0, 40) + ((input.command?.length > 40) ? '...' : '');
+    case 'Task': return input.subagent_type || '';
+    default: return '';
   }
-
-  console.log();
 }
 
-function printAgentError(msg) {
-  const time = formatTimestamp(msg.timestamp);
-  console.log(`${colors.dim}[${time}]${colors.reset} ${colors.yellow}⚠ ${msg.agent}${colors.reset} ${colors.dim}error${colors.reset}`);
-
-  if (msg.error) {
-    console.log(`  ${colors.yellow}${msg.error}${colors.reset}`);
-  }
-
-  console.log();
+function printToolUse(toolName, input, timestamp) {
+  const time = formatTime(timestamp);
+  const summary = summarizeInput(toolName, input);
+  const summaryStr = summary ? ` ${colors.dim}${summary}${colors.reset}` : '';
+  console.log(`${colors.dim}[${time}]${colors.reset}   ${colors.blue}→${colors.reset} ${toolName}${summaryStr}`);
 }
 
-function handleMessage(line) {
-  try {
-    const msg = JSON.parse(line.trim());
+function printToolResult(toolName, timestamp) {
+  // We don't print results by default to keep output clean
+  // Could optionally show: console.log(`${colors.dim}[${time}]${colors.reset}   ${colors.green}✓${colors.reset}`);
+}
 
-    switch (msg.type) {
-      case 'agent_start':
-        printAgentStart(msg);
-        break;
-      case 'agent_complete':
-        printAgentComplete(msg);
-        break;
-      case 'agent_error':
-        printAgentError(msg);
-        break;
-      default:
-        console.log(`${colors.dim}[message]${colors.reset}`, msg);
+function printAgentComplete(duration) {
+  const time = formatTime(new Date().toISOString());
+  console.log();
+  console.log(`${colors.dim}[${time}]${colors.reset} ${colors.green}✓ ${agentType} completed${colors.reset} ${colors.dim}(${duration})${colors.reset}`);
+}
+
+// Track state
+let taskStarted = false;
+let taskCompleted = false;
+let startTime = Date.now();
+let fileSize = 0;
+let pendingTools = new Map(); // Track tool_use_id -> toolName
+
+// Watch the transcript file for changes
+function watchTranscript() {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) {
+    console.log(`${colors.yellow}Waiting for transcript...${colors.reset}`);
+    return;
+  }
+
+  // Get initial file size
+  const stats = fs.statSync(transcriptPath);
+  fileSize = stats.size;
+
+  // Watch for changes
+  fs.watch(transcriptPath, (eventType) => {
+    if (eventType === 'change') {
+      readNewLines();
     }
-  } catch {
-    // Not JSON, just echo
-    if (line.trim()) {
-      console.log(line);
+  });
+
+  // Also poll periodically as fs.watch can be unreliable
+  setInterval(readNewLines, 200);
+}
+
+function readNewLines() {
+  if (taskCompleted) return;
+
+  try {
+    const stats = fs.statSync(transcriptPath);
+    if (stats.size <= fileSize) return;
+
+    // Read new content
+    const fd = fs.openSync(transcriptPath, 'r');
+    const buffer = Buffer.alloc(stats.size - fileSize);
+    fs.readSync(fd, buffer, 0, buffer.length, fileSize);
+    fs.closeSync(fd);
+
+    fileSize = stats.size;
+
+    // Process new lines
+    const newContent = buffer.toString('utf-8');
+    const lines = newContent.split('\n').filter(l => l.trim());
+
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        processEntry(entry);
+      } catch (e) {
+        // Skip invalid JSON lines
+      }
+    }
+  } catch (e) {
+    // File might be temporarily unavailable
+  }
+}
+
+function processEntry(entry) {
+  // Look for tool_use in assistant messages
+  if (entry.type === 'assistant' && entry.message?.content) {
+    for (const block of entry.message.content) {
+      if (block.type === 'tool_use') {
+        // Check if this is OUR task completing (a Task tool_result for our taskId)
+        pendingTools.set(block.id, block.name);
+
+        // Don't show the initial Task invocation (that's us starting)
+        if (block.name !== 'Task' || taskStarted) {
+          printToolUse(block.name, block.input, entry.timestamp);
+        }
+      }
+    }
+  }
+
+  // Look for tool_result
+  if (entry.type === 'user' && entry.message?.content) {
+    for (const block of entry.message.content) {
+      if (block.type === 'tool_result') {
+        const toolName = pendingTools.get(block.tool_use_id);
+        if (toolName) {
+          pendingTools.delete(block.tool_use_id);
+
+          // Check if this is our Task completing
+          if (block.tool_use_id === taskId) {
+            const duration = Math.round((Date.now() - startTime) / 1000);
+            printAgentComplete(`${duration}s`);
+            taskCompleted = true;
+          }
+        }
+      }
     }
   }
 }
@@ -120,21 +192,25 @@ function handleMessage(line) {
 // Main
 clearScreen();
 printHeader();
-console.log(`${colors.dim}Waiting for subagent activity...${colors.reset}`);
-console.log();
+printAgentStart();
+taskStarted = true;
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false
-});
+if (transcriptPath) {
+  watchTranscript();
+} else {
+  console.log(`${colors.dim}No transcript path provided. Waiting for messages...${colors.reset}`);
 
-rl.on('line', handleMessage);
+  // Fallback to stdin for backwards compatibility
+  const rl = readline.createInterface({ input: process.stdin, terminal: false });
+  rl.on('line', (line) => {
+    try {
+      const msg = JSON.parse(line);
+      if (msg.type === 'agent_complete') {
+        printAgentComplete(msg.duration || 'unknown');
+      }
+    } catch {}
+  });
+}
 
-rl.on('close', () => {
-  console.log(`${colors.dim}Session ended.${colors.reset}`);
-  process.exit(0);
-});
-
-// Keep process alive
+// Keep alive
 process.stdin.resume();

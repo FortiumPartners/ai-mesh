@@ -79,25 +79,21 @@ async function main(hookData) {
     const params = hookData.tool_input || hookData.parameters || hookData.input || {};
     const agentType = params.subagent_type || 'unknown';
     const description = params.description || '';
-    const prompt = params.prompt || '';
+    const transcriptPath = hookData.transcript_path;
+    const taskId = hookData.tool_use_id;
 
     // Initialize pane manager
     const manager = new PaneManager();
 
-    // Get or create viewer pane
+    // Always create a NEW pane for each subagent so it gets fresh transcript watching
     const paneId = await manager.getOrCreatePane({
       direction: config.direction,
       percent: config.percent,
-      reuseExisting: config.reusePane
-    });
-
-    // Send agent info to viewer
-    await manager.sendMessage(paneId, {
-      type: 'agent_start',
-      timestamp: new Date().toISOString(),
-      agent: agentType,
-      description: description,
-      promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : '')
+      reuseExisting: false,  // Don't reuse - each agent gets its own viewer
+      transcriptPath,
+      taskId,
+      agentType,
+      description
     });
 
     // Track agent start time for duration calculation
@@ -107,7 +103,9 @@ async function main(hookData) {
       startTime: new Date().toISOString(),
       agent: agentType,
       description: description,
-      paneId: paneId
+      paneId: paneId,
+      taskId: taskId,
+      transcriptPath: transcriptPath
     };
     saveActiveAgents(activeAgents);
 

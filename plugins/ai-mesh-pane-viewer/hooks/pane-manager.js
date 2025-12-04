@@ -78,7 +78,15 @@ class PaneManager {
   async getOrCreatePane(config = {}) {
     await this.init();
 
-    const { direction = 'right', percent = 40, reuseExisting = true } = config;
+    const {
+      direction = 'right',
+      percent = 40,
+      reuseExisting = true,
+      transcriptPath,
+      taskId,
+      agentType,
+      description
+    } = config;
     const state = await this.loadState();
     const sessionKey = `${this.adapter.name}:${process.env.WEZTERM_PANE || process.pid}`;
 
@@ -95,10 +103,25 @@ class PaneManager {
 
     // Spawn new pane with agent-viewer
     const viewerPath = path.join(__dirname, 'agent-viewer.js');
+    const command = ['node', viewerPath];
+
+    if (transcriptPath) {
+      command.push('--transcript', transcriptPath);
+    }
+    if (taskId) {
+      command.push('--task-id', taskId);
+    }
+    if (agentType) {
+      command.push('--agent', agentType);
+    }
+    if (description) {
+      command.push('--description', description);
+    }
+
     const paneId = await this.adapter.splitPane({
       direction,
       percent,
-      command: ['node', viewerPath]
+      command
     });
 
     // Save to state

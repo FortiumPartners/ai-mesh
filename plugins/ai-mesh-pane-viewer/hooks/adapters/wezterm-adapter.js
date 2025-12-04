@@ -63,12 +63,20 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
     }
 
     try {
-      const result = execSync(`wezterm ${args.join(' ')}`, {
+      // Use spawnSync to avoid shell escaping issues with special characters
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('wezterm', args, {
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe']
       });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr || 'Unknown error';
+        throw new Error(stderr);
+      }
+
       // WezTerm returns the pane ID
-      return result.trim();
+      return (result.stdout || '').trim();
     } catch (error) {
       throw new Error(`Failed to split pane: ${error.message}`);
     }
