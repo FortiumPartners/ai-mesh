@@ -69,13 +69,14 @@ async function main(hookData) {
       return;
     }
 
-    // Only handle Task tool
-    if (hookData.tool !== 'Task') {
+    // Only handle Task tool (Claude sends tool_name, not tool)
+    const toolName = hookData.tool_name || hookData.tool;
+    if (toolName !== 'Task') {
       return;
     }
 
-    // Extract agent info from parameters
-    const params = hookData.parameters || hookData.input || {};
+    // Extract agent info from parameters (Claude sends tool_input, not parameters)
+    const params = hookData.tool_input || hookData.parameters || hookData.input || {};
     const agentType = params.subagent_type || 'unknown';
     const description = params.description || '';
     const prompt = params.prompt || '';
