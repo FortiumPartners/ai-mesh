@@ -1,0 +1,82 @@
+{
+  "name": "@fortium/ai-mesh-marketplace",
+  "version": "1.0.0",
+  "description": "Official plugin marketplace CLI for the Fortium AI Mesh platform",
+  "main": "cli/index.js",
+  "bin": {
+    "ai-mesh-marketplace": "./cli/index.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "validate:registry": "ajv validate -s schemas/registry-schema.json -d registry/plugins.json",
+    "validate:plugin": "ajv validate -s schemas/plugin-schema.json -d",
+    "ci": "npm run lint && npm run test && npm run validate:registry"
+  },
+  "keywords": [
+    "ai-mesh",
+    "claude-code",
+    "marketplace",
+    "plugins",
+    "cli",
+    "fortium"
+  ],
+  "author": {
+    "name": "Fortium Partners",
+    "email": "support@fortiumpartners.com",
+    "url": "https://fortiumpartners.com"
+  },
+  "contributors": [
+    {
+      "name": "Leo D'Angelo",
+      "email": "leo@fortiumpartners.com"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FortiumPartners/ai-mesh-marketplace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FortiumPartners/ai-mesh-marketplace/issues"
+  },
+  "homepage": "https://github.com/FortiumPartners/ai-mesh-marketplace#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.5",
+    "semver": "^7.5.4",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-jest": "^27.6.0",
+    "prettier": "^3.1.0",
+    "ajv": "^8.12.0",
+    "ajv-cli": "^5.0.0",
+    "ajv-formats": "^2.1.1"
+  },
+  "files": [
+    "cli/",
+    "registry/",
+    "schemas/",
+    "docs/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

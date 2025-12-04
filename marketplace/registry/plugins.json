@@ -1,0 +1,107 @@
+{
+  "$schema": "../schemas/registry-schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-04T00:00:00Z",
+  "plugins": [
+    {
+      "name": "ai-mesh-pane-viewer",
+      "displayName": "Pane Viewer",
+      "description": "Real-time subagent monitoring in terminal panes (WezTerm, Zellij, tmux)",
+      "version": "1.0.0",
+      "author": {
+        "name": "Fortium Partners",
+        "email": "support@fortiumpartners.com",
+        "url": "https://fortiumpartners.com"
+      },
+      "repository": "https://github.com/FortiumPartners/ai-mesh-pane-viewer",
+      "npm": "@fortium/ai-mesh-pane-viewer",
+      "category": "monitoring",
+      "tags": ["wezterm", "zellij", "tmux", "subagents", "monitoring", "realtime"],
+      "tier": "workflow",
+      "dependencies": {
+        "ai-mesh-core": ">=4.0.0"
+      },
+      "status": "preview",
+      "featured": true,
+      "installCommand": "npm install -g @fortium/ai-mesh-pane-viewer",
+      "documentation": "https://github.com/FortiumPartners/ai-mesh-pane-viewer#readme",
+      "license": "MIT",
+      "keywords": ["claude-code", "monitoring", "terminal", "subagents"],
+      "screenshots": [
+        "https://raw.githubusercontent.com/FortiumPartners/ai-mesh-pane-viewer/main/docs/screenshots/wezterm-split.png"
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "core",
+      "name": "Core",
+      "description": "Essential ai-mesh functionality and platform extensions",
+      "icon": "⚙️"
+    },
+    {
+      "id": "monitoring",
+      "name": "Monitoring",
+      "description": "Agent and system monitoring, metrics, and observability tools",
+      "icon": "📊"
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow",
+      "description": "Development workflow enhancements and automation tools",
+      "icon": "🔄"
+    },
+    {
+      "id": "frameworks",
+      "name": "Frameworks",
+      "description": "Framework-specific tools and integrations (React, NestJS, Rails, etc.)",
+      "icon": "🏗️"
+    },
+    {
+      "id": "testing",
+      "name": "Testing",
+      "description": "Testing frameworks, quality assurance, and validation tools",
+      "icon": "✅"
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "description": "Infrastructure automation, deployment tools, and DevOps integrations",
+      "icon": "🚀"
+    }
+  ],
+  "tiers": [
+    {
+      "id": "foundation",
+      "name": "Foundation",
+      "description": "Core platform extensions providing fundamental capabilities",
+      "priority": 1
+    },
+    {
+      "id": "workflow",
+      "name": "Workflow",
+      "description": "Development workflow enhancements and automation tools",
+      "priority": 2
+    },
+    {
+      "id": "framework",
+      "name": "Framework",
+      "description": "Framework-specific integrations and specialized tooling",
+      "priority": 3
+    },
+    {
+      "id": "testing",
+      "name": "Testing",
+      "description": "Quality assurance and testing infrastructure",
+      "priority": 4
+    }
+  ],
+  "metadata": {
+    "totalPlugins": 1,
+    "activePlugins": 1,
+    "deprecatedPlugins": 0,
+    "featuredPlugins": 1,
+    "averageRating": 0,
+    "totalDownloads": 0
+  }
+}

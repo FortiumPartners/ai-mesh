@@ -1,0 +1,42 @@
+# Development files
+tests/
+*.test.js
+.github/
+.vscode/
+.idea/
+
+# Documentation (exclude from npm, keep in repo)
+docs/examples/
+docs/internal/
+
+# Configuration
+.eslintrc.json
+.prettierrc
+jest.config.js
+.gitignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Coverage and testing
+coverage/
+.nyc_output/
+
+# Source control
+.git/
+.gitattributes
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp

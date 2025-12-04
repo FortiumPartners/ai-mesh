@@ -1,0 +1,377 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Mesh Plugin Manifest",
+  "description": "Schema for plugin.json manifest files in AI Mesh plugins",
+  "type": "object",
+  "required": ["name", "version", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^ai-mesh-[a-z0-9-]+$",
+      "description": "Plugin package name (must start with 'ai-mesh-')"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Plugin version following semantic versioning"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Detailed plugin description"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "description": "Human-readable plugin name"
+    },
+    "author": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Author name"
+        },
+        {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Author or organization name"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Contact email"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Author website"
+            }
+          }
+        }
+      ]
+    },
+    "contributors": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "email": { "type": "string", "format": "email" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        ]
+      },
+      "description": "Additional contributors"
+    },
+    "repository": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "uri",
+          "description": "Repository URL"
+        },
+        {
+          "type": "object",
+          "required": ["type", "url"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["git", "svn"],
+              "description": "Repository type"
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Repository URL"
+            },
+            "directory": {
+              "type": "string",
+              "description": "Subdirectory if in monorepo"
+            }
+          }
+        }
+      ]
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Plugin homepage URL"
+    },
+    "bugs": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "uri",
+          "description": "Issue tracker URL"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Issue tracker URL"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Contact email for bugs"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "Keywords for plugin discovery"
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier or 'UNLICENSED'"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["core", "monitoring", "workflow", "frameworks", "testing", "infrastructure"],
+      "description": "Primary plugin category"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["foundation", "workflow", "framework", "testing"],
+      "description": "Plugin tier classification"
+    },
+    "hooks": {
+      "type": "string",
+      "description": "Path to hooks.json file (relative to plugin root)"
+    },
+    "commands": {
+      "type": "string",
+      "description": "Path to commands directory (relative to plugin root)"
+    },
+    "agents": {
+      "type": "string",
+      "description": "Path to agents directory (relative to plugin root)"
+    },
+    "skills": {
+      "type": "string",
+      "description": "Path to skills directory (relative to plugin root)"
+    },
+    "config": {
+      "type": "string",
+      "description": "Path to configuration directory (relative to plugin root)"
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Runtime dependencies with version constraints"
+    },
+    "devDependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Development dependencies"
+    },
+    "peerDependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Peer dependencies (e.g., ai-mesh-core version)"
+    },
+    "optionalDependencies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Optional dependencies"
+    },
+    "engines": {
+      "type": "object",
+      "properties": {
+        "claude-code": {
+          "type": "string",
+          "description": "Required Claude Code version"
+        },
+        "node": {
+          "type": "string",
+          "description": "Required Node.js version"
+        },
+        "npm": {
+          "type": "string",
+          "description": "Required npm version"
+        }
+      },
+      "description": "Engine compatibility requirements"
+    },
+    "os": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["darwin", "linux", "win32", "!win32", "!darwin", "!linux"]
+      },
+      "description": "Operating system compatibility"
+    },
+    "cpu": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "CPU architecture compatibility"
+    },
+    "aiMesh": {
+      "type": "object",
+      "description": "AI Mesh-specific configuration",
+      "properties": {
+        "minVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Minimum ai-mesh version required"
+        },
+        "maxVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Maximum ai-mesh version supported"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required ai-mesh plugins"
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Conflicting plugins"
+        },
+        "installHooks": {
+          "type": "object",
+          "properties": {
+            "preinstall": {
+              "type": "string",
+              "description": "Script to run before installation"
+            },
+            "postinstall": {
+              "type": "string",
+              "description": "Script to run after installation"
+            },
+            "preuninstall": {
+              "type": "string",
+              "description": "Script to run before uninstallation"
+            },
+            "postuninstall": {
+              "type": "string",
+              "description": "Script to run after uninstallation"
+            }
+          },
+          "description": "Installation lifecycle hooks"
+        },
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "filesystem": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Paths plugin can read"
+                },
+                "write": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Paths plugin can write"
+                }
+              }
+            },
+            "network": {
+              "type": "object",
+              "properties": {
+                "domains": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Allowed network domains"
+                }
+              }
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
+              },
+              "description": "Required Claude Code tools"
+            }
+          },
+          "description": "Security permissions required by plugin"
+        },
+        "configuration": {
+          "type": "object",
+          "description": "Plugin configuration schema",
+          "properties": {
+            "schema": {
+              "type": "object",
+              "description": "JSON Schema for plugin configuration"
+            },
+            "defaults": {
+              "type": "object",
+              "description": "Default configuration values"
+            }
+          }
+        }
+      }
+    },
+    "scripts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "NPM scripts for plugin lifecycle"
+    },
+    "main": {
+      "type": "string",
+      "description": "Main entry point for programmatic access"
+    },
+    "bin": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Single binary path"
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Multiple binary paths"
+        }
+      ]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files to include in package"
+    }
+  }
+}
