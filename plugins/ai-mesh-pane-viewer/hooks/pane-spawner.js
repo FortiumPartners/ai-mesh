@@ -24,6 +24,7 @@ const path = require('path');
 const os = require('os');
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-mesh-pane-viewer', 'config.json');
+const ACTIVE_AGENTS_PATH = path.join(os.homedir(), '.ai-mesh-pane-viewer', 'active-agents.json');
 
 function loadConfig() {
   try {
@@ -37,6 +38,23 @@ function loadConfig() {
     percent: 40,
     reusePane: true
   };
+}
+
+function loadActiveAgents() {
+  try {
+    if (fs.existsSync(ACTIVE_AGENTS_PATH)) {
+      return JSON.parse(fs.readFileSync(ACTIVE_AGENTS_PATH, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
+function saveActiveAgents(agents) {
+  const dir = path.dirname(ACTIVE_AGENTS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(ACTIVE_AGENTS_PATH, JSON.stringify(agents, null, 2));
 }
 
 async function main(hookData) {
@@ -80,6 +98,17 @@ async function main(hookData) {
       description: description,
       promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : '')
     });
+
+    // Track agent start time for duration calculation
+    const agentKey = `${agentType}:${description}`.substring(0, 100);
+    const activeAgents = loadActiveAgents();
+    activeAgents[agentKey] = {
+      startTime: new Date().toISOString(),
+      agent: agentType,
+      description: description,
+      paneId: paneId
+    };
+    saveActiveAgents(activeAgents);
 
   } catch (error) {
     // Fail silently to not interrupt Claude Code workflow

@@ -75,7 +75,7 @@ function printAgentComplete(msg) {
   console.log(`${colors.dim}[${time}]${colors.reset} ${color}✓ ${msg.agent}${colors.reset} ${colors.dim}completed${colors.reset}`);
 
   if (msg.duration) {
-    console.log(`  ${colors.dim}Duration:${colors.reset} ${msg.duration}s`);
+    console.log(`  ${colors.dim}Duration:${colors.reset} ${msg.duration}`);
   }
 
   console.log();
