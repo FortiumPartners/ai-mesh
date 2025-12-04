@@ -1,5 +1,5 @@
 const { BaseMultiplexerAdapter } = require('./base-adapter');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 
 /**
  * WezTerm multiplexer adapter
@@ -17,10 +17,15 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<boolean>}
    */
   async isAvailable() {
+    // Check WEZTERM_PANE environment variable first (most reliable)
+    if (process.env.WEZTERM_PANE) {
+      return true;
+    }
+    // Fallback to CLI check
     try {
       execSync('which wezterm', { stdio: 'pipe' });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -31,12 +36,42 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<string>} Pane ID
    */
   async splitPane(options) {
-    // TODO: Implement WezTerm pane splitting
-    // WezTerm CLI commands:
-    // - wezterm cli split-pane --horizontal --percent 30 -- command
-    // - wezterm cli split-pane --bottom --percent 30 -- command
-    // Return format: "pane-id:N"
-    throw new Error('WeztermAdapter.splitPane() not yet implemented');
+    const { direction = 'right', percent = 40, command, cwd } = options;
+
+    // Map direction to WezTerm flags
+    const directionFlag = direction === 'bottom' || direction === 'down'
+      ? '--bottom'
+      : '--right';
+
+    const args = [
+      'cli', 'split-pane',
+      directionFlag,
+      '--percent', String(percent)
+    ];
+
+    if (cwd) {
+      args.push('--cwd', cwd);
+    }
+
+    if (command) {
+      args.push('--');
+      if (Array.isArray(command)) {
+        args.push(...command);
+      } else {
+        args.push(command);
+      }
+    }
+
+    try {
+      const result = execSync(`wezterm ${args.join(' ')}`, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      // WezTerm returns the pane ID
+      return result.trim();
+    } catch (error) {
+      throw new Error(`Failed to split pane: ${error.message}`);
+    }
   }
 
   /**
@@ -45,21 +80,28 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<void>}
    */
   async closePane(paneId) {
-    // TODO: Implement WezTerm pane closing
-    // wezterm cli kill-pane --pane-id <id>
-    throw new Error('WeztermAdapter.closePane() not yet implemented');
+    try {
+      execSync(`wezterm cli kill-pane --pane-id ${paneId}`, { stdio: 'pipe' });
+    } catch (error) {
+      // Pane may already be closed
+      console.error(`[wezterm] closePane warning: ${error.message}`);
+    }
   }
 
   /**
    * Send keys to a WezTerm pane
    * @param {string} paneId - Pane ID
-   * @param {string} keys - Keys to send
+   * @param {string} text - Text to send
    * @returns {Promise<void>}
    */
-  async sendKeys(paneId, keys) {
-    // TODO: Implement WezTerm key sending
-    // wezterm cli send-text --pane-id <id> --no-paste "text"
-    throw new Error('WeztermAdapter.sendKeys() not yet implemented');
+  async sendKeys(paneId, text) {
+    try {
+      // Escape double quotes in text
+      const escaped = text.replace(/"/g, '\\"');
+      execSync(`wezterm cli send-text --pane-id ${paneId} --no-paste "${escaped}"`, { stdio: 'pipe' });
+    } catch (error) {
+      throw new Error(`Failed to send text: ${error.message}`);
+    }
   }
 
   /**
@@ -68,9 +110,32 @@ class WeztermAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<Object>}
    */
   async getPaneInfo(paneId) {
-    // TODO: Implement WezTerm pane info retrieval
-    // wezterm cli list --format json
-    throw new Error('WeztermAdapter.getPaneInfo() not yet implemented');
+    try {
+      const result = execSync('wezterm cli list --format json', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      const panes = JSON.parse(result);
+      return panes.find(p => String(p.pane_id) === String(paneId)) || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * List all WezTerm panes
+   * @returns {Promise<Array>} List of panes
+   */
+  async listPanes() {
+    try {
+      const result = execSync('wezterm cli list --format json', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      return JSON.parse(result);
+    } catch {
+      return [];
+    }
   }
 }
 

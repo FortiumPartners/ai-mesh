@@ -18,31 +18,69 @@
  * - AI_MESH_PANE_MULTIPLEXER: Override auto-detection ('wezterm', 'zellij', 'tmux')
  */
 
+const { PaneManager } = require('./pane-manager');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-/**
- * Main hook entry point
- * @param {Object} hookData - Claude Code hook data
- * @param {string} hookData.tool - Tool being invoked
- * @param {Object} hookData.parameters - Tool parameters
- */
+const CONFIG_PATH = path.join(os.homedir(), '.ai-mesh-pane-viewer', 'config.json');
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    }
+  } catch {}
+  return {
+    enabled: true,
+    direction: 'right',
+    percent: 40,
+    reusePane: true
+  };
+}
+
 async function main(hookData) {
   try {
-    // Check if disabled
+    // Check disable flag
     if (process.env.AI_MESH_PANE_DISABLE === '1') {
       return;
     }
 
-    // TODO: Implement pane spawning logic
-    // 1. Parse hookData to extract agent/task info
-    // 2. Load config from ~/.ai-mesh-pane-viewer/config.json
-    // 3. Use MultiplexerDetector to find/select multiplexer
-    // 4. Use PaneManager to spawn/reuse pane
-    // 5. Send task info to agent-viewer.js
+    const config = loadConfig();
+    if (!config.enabled) {
+      return;
+    }
 
-    console.error('[pane-spawner] TODO: Implement pane spawning');
+    // Only handle Task tool
+    if (hookData.tool !== 'Task') {
+      return;
+    }
+
+    // Extract agent info from parameters
+    const params = hookData.parameters || hookData.input || {};
+    const agentType = params.subagent_type || 'unknown';
+    const description = params.description || '';
+    const prompt = params.prompt || '';
+
+    // Initialize pane manager
+    const manager = new PaneManager();
+
+    // Get or create viewer pane
+    const paneId = await manager.getOrCreatePane({
+      direction: config.direction,
+      percent: config.percent,
+      reuseExisting: config.reusePane
+    });
+
+    // Send agent info to viewer
+    await manager.sendMessage(paneId, {
+      type: 'agent_start',
+      timestamp: new Date().toISOString(),
+      agent: agentType,
+      description: description,
+      promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : '')
+    });
+
   } catch (error) {
     // Fail silently to not interrupt Claude Code workflow
     console.error('[pane-spawner] Error:', error.message);

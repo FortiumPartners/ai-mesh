@@ -24,6 +24,8 @@ class PaneManager {
     this.stateDir = path.join(os.homedir(), '.ai-mesh-pane-viewer');
     this.statePath = path.join(this.stateDir, 'panes.json');
     this.detector = new MultiplexerDetector();
+    this.adapter = null;
+    this.initialized = false;
   }
 
   /**
@@ -31,10 +33,41 @@ class PaneManager {
    * @returns {Promise<void>}
    */
   async init() {
-    // TODO: Implement initialization
-    // 1. Create ~/.ai-mesh-pane-viewer if it doesn't exist
-    // 2. Load or create panes.json
-    throw new Error('PaneManager.init() not yet implemented');
+    if (this.initialized) return;
+
+    // Create state directory
+    await fs.mkdir(this.stateDir, { recursive: true });
+
+    // Detect multiplexer
+    this.adapter = await this.detector.autoSelect();
+    if (!this.adapter) {
+      throw new Error('No terminal multiplexer detected');
+    }
+
+    this.initialized = true;
+  }
+
+  /**
+   * Load pane state from file
+   * @returns {Promise<Object>} Pane state
+   */
+  async loadState() {
+    try {
+      const content = await fs.readFile(this.statePath, 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return { panes: {}, lastUpdated: null };
+    }
+  }
+
+  /**
+   * Save pane state to file
+   * @param {Object} state - State to save
+   * @returns {Promise<void>}
+   */
+  async saveState(state) {
+    state.lastUpdated = new Date().toISOString();
+    await fs.writeFile(this.statePath, JSON.stringify(state, null, 2));
   }
 
   /**
@@ -42,14 +75,41 @@ class PaneManager {
    * @param {Object} config - Configuration options
    * @returns {Promise<string>} Pane ID
    */
-  async getOrCreatePane(config) {
-    // TODO: Implement pane management
-    // 1. Check if pane already exists for this session
-    // 2. Validate existing pane is still alive
-    // 3. Spawn new pane if needed using adapter
-    // 4. Save pane info to state file
-    // 5. Return pane ID
-    throw new Error('PaneManager.getOrCreatePane() not yet implemented');
+  async getOrCreatePane(config = {}) {
+    await this.init();
+
+    const { direction = 'right', percent = 40, reuseExisting = true } = config;
+    const state = await this.loadState();
+    const sessionKey = `${this.adapter.name}:${process.env.WEZTERM_PANE || process.pid}`;
+
+    // Check for existing pane
+    if (reuseExisting && state.panes[sessionKey]) {
+      const existingPane = state.panes[sessionKey];
+      const paneInfo = await this.adapter.getPaneInfo(existingPane.paneId);
+      if (paneInfo) {
+        return existingPane.paneId;
+      }
+      // Pane no longer exists, clean up
+      delete state.panes[sessionKey];
+    }
+
+    // Spawn new pane with agent-viewer
+    const viewerPath = path.join(__dirname, 'agent-viewer.js');
+    const paneId = await this.adapter.splitPane({
+      direction,
+      percent,
+      command: ['node', viewerPath]
+    });
+
+    // Save to state
+    state.panes[sessionKey] = {
+      paneId,
+      multiplexer: this.adapter.name,
+      createdAt: new Date().toISOString()
+    };
+    await this.saveState(state);
+
+    return paneId;
   }
 
   /**
@@ -59,10 +119,10 @@ class PaneManager {
    * @returns {Promise<void>}
    */
   async sendMessage(paneId, message) {
-    // TODO: Implement message sending
-    // 1. Serialize message to JSON
-    // 2. Use adapter.sendKeys() to send JSON + newline
-    throw new Error('PaneManager.sendMessage() not yet implemented');
+    await this.init();
+    const json = JSON.stringify(message);
+    // Send as escaped JSON followed by newline
+    await this.adapter.sendKeys(paneId, `${json}\n`);
   }
 
   /**
@@ -71,10 +131,17 @@ class PaneManager {
    * @returns {Promise<void>}
    */
   async closePane(paneId) {
-    // TODO: Implement pane closing
-    // 1. Use adapter.closePane()
-    // 2. Remove from state file
-    throw new Error('PaneManager.closePane() not yet implemented');
+    await this.init();
+    await this.adapter.closePane(paneId);
+
+    // Remove from state
+    const state = await this.loadState();
+    for (const key of Object.keys(state.panes)) {
+      if (state.panes[key].paneId === paneId) {
+        delete state.panes[key];
+      }
+    }
+    await this.saveState(state);
   }
 
   /**
@@ -82,31 +149,23 @@ class PaneManager {
    * @returns {Promise<number>} Number of panes cleaned up
    */
   async cleanup() {
-    // TODO: Implement cleanup
-    // 1. Load state file
-    // 2. Check each pane with adapter.getPaneInfo()
-    // 3. Remove dead panes from state
-    // 4. Return count of cleaned panes
-    throw new Error('PaneManager.cleanup() not yet implemented');
-  }
+    await this.init();
+    const state = await this.loadState();
+    let cleaned = 0;
 
-  /**
-   * Load pane state from file
-   * @returns {Promise<Object>} Pane state
-   */
-  async loadState() {
-    // TODO: Implement state loading
-    throw new Error('PaneManager.loadState() not yet implemented');
-  }
+    for (const key of Object.keys(state.panes)) {
+      const pane = state.panes[key];
+      const info = await this.adapter.getPaneInfo(pane.paneId);
+      if (!info) {
+        delete state.panes[key];
+        cleaned++;
+      }
+    }
 
-  /**
-   * Save pane state to file
-   * @param {Object} state - State to save
-   * @returns {Promise<void>}
-   */
-  async saveState(state) {
-    // TODO: Implement state saving
-    throw new Error('PaneManager.saveState() not yet implemented');
+    if (cleaned > 0) {
+      await this.saveState(state);
+    }
+    return cleaned;
   }
 }
 

@@ -5,137 +5,136 @@
  *
  * Real-time display of subagent activity in a terminal pane.
  * Receives updates via stdin and displays formatted agent status.
- *
- * Display Format:
- * ╔═══════════════════════════════════════════╗
- * ║ AI Mesh Subagent Monitor                  ║
- * ╠═══════════════════════════════════════════╣
- * ║ Agent: infrastructure-developer           ║
- * ║ Status: Active                            ║
- * ║ Task: Deploy Kubernetes manifests         ║
- * ║ Started: 14:23:45                         ║
- * ║ Duration: 00:02:15                        ║
- * ╠═══════════════════════════════════════════╣
- * ║ Recent Activity:                          ║
- * ║ • Created deployment.yaml                 ║
- * ║ • Created service.yaml                    ║
- * ║ • Running kubectl apply                   ║
- * ╚═══════════════════════════════════════════╝
- *
- * Input Format (JSON on stdin):
- * {
- *   "type": "task_start|task_update|task_complete",
- *   "agent": "agent-name",
- *   "task": "Task description",
- *   "status": "active|complete|error",
- *   "activity": ["activity line 1", "activity line 2"]
- * }
  */
 
 const readline = require('readline');
 
-/**
- * Agent viewer state
- */
-const state = {
-  agent: null,
-  task: null,
-  status: 'Waiting',
-  startTime: null,
-  activity: []
+// ANSI colors
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  cyan: '\x1b[36m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m',
+  gray: '\x1b[90m'
 };
 
-/**
- * Clear screen and redraw viewer
- */
-function redraw() {
-  // TODO: Implement terminal UI rendering
-  // 1. Clear screen (console.clear() or ANSI codes)
-  // 2. Draw border with box-drawing characters
-  // 3. Display current state (agent, task, status, duration)
-  // 4. Display activity log (last 10 items)
-  // 5. Use colors for status (green=active, blue=complete, red=error)
+const agentColors = {
+  'frontend-developer': colors.cyan,
+  'backend-developer': colors.green,
+  'code-reviewer': colors.yellow,
+  'test-runner': colors.blue,
+  'documentation-specialist': colors.magenta,
+  'default': colors.gray
+};
 
-  console.log('[agent-viewer] TODO: Implement UI rendering');
-  console.log('Current state:', JSON.stringify(state, null, 2));
+function getAgentColor(agent) {
+  return agentColors[agent] || agentColors.default;
 }
 
-/**
- * Handle incoming message
- * @param {Object} message - Incoming message object
- */
-function handleMessage(message) {
+function formatTimestamp(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour12: false });
+}
+
+function clearScreen() {
+  process.stdout.write('\x1b[2J\x1b[H');
+}
+
+function printHeader() {
+  console.log(`${colors.bright}╔════════════════════════════════════════╗${colors.reset}`);
+  console.log(`${colors.bright}║  ${colors.cyan}AI-Mesh Subagent Monitor${colors.reset}${colors.bright}           ║${colors.reset}`);
+  console.log(`${colors.bright}╚════════════════════════════════════════╝${colors.reset}`);
+  console.log();
+}
+
+function printAgentStart(msg) {
+  const color = getAgentColor(msg.agent);
+  const time = formatTimestamp(msg.timestamp);
+
+  console.log(`${colors.dim}[${time}]${colors.reset} ${color}${colors.bright}▶ ${msg.agent}${colors.reset}`);
+
+  if (msg.description) {
+    console.log(`  ${colors.dim}Task:${colors.reset} ${msg.description}`);
+  }
+
+  if (msg.promptPreview) {
+    console.log(`  ${colors.dim}Prompt:${colors.reset} ${msg.promptPreview.substring(0, 80)}...`);
+  }
+
+  console.log();
+}
+
+function printAgentComplete(msg) {
+  const color = getAgentColor(msg.agent);
+  const time = formatTimestamp(msg.timestamp);
+
+  console.log(`${colors.dim}[${time}]${colors.reset} ${color}✓ ${msg.agent}${colors.reset} ${colors.dim}completed${colors.reset}`);
+
+  if (msg.duration) {
+    console.log(`  ${colors.dim}Duration:${colors.reset} ${msg.duration}s`);
+  }
+
+  console.log();
+}
+
+function printAgentError(msg) {
+  const time = formatTimestamp(msg.timestamp);
+  console.log(`${colors.dim}[${time}]${colors.reset} ${colors.yellow}⚠ ${msg.agent}${colors.reset} ${colors.dim}error${colors.reset}`);
+
+  if (msg.error) {
+    console.log(`  ${colors.yellow}${msg.error}${colors.reset}`);
+  }
+
+  console.log();
+}
+
+function handleMessage(line) {
   try {
-    switch (message.type) {
-      case 'task_start':
-        state.agent = message.agent;
-        state.task = message.task;
-        state.status = 'Active';
-        state.startTime = Date.now();
-        state.activity = [];
-        break;
+    const msg = JSON.parse(line.trim());
 
-      case 'task_update':
-        if (message.activity) {
-          state.activity = [...message.activity.slice(-10)]; // Keep last 10
-        }
+    switch (msg.type) {
+      case 'agent_start':
+        printAgentStart(msg);
         break;
-
-      case 'task_complete':
-        state.status = message.status || 'Complete';
+      case 'agent_complete':
+        printAgentComplete(msg);
         break;
-
+      case 'agent_error':
+        printAgentError(msg);
+        break;
       default:
-        console.error('[agent-viewer] Unknown message type:', message.type);
+        console.log(`${colors.dim}[message]${colors.reset}`, msg);
     }
-
-    redraw();
-  } catch (error) {
-    console.error('[agent-viewer] Error handling message:', error.message);
+  } catch {
+    // Not JSON, just echo
+    if (line.trim()) {
+      console.log(line);
+    }
   }
 }
 
-/**
- * Main entry point
- */
-function main() {
-  console.log('[agent-viewer] Starting agent viewer...');
+// Main
+clearScreen();
+printHeader();
+console.log(`${colors.dim}Waiting for subagent activity...${colors.reset}`);
+console.log();
 
-  // TODO: Initialize terminal UI
-  // 1. Set up terminal (raw mode, hide cursor)
-  // 2. Register cleanup handlers (restore terminal on exit)
-  // 3. Display initial empty state
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false
+});
 
-  // Read JSON messages from stdin
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: false
-  });
+rl.on('line', handleMessage);
 
-  rl.on('line', (line) => {
-    try {
-      const message = JSON.parse(line);
-      handleMessage(message);
-    } catch (error) {
-      console.error('[agent-viewer] Invalid JSON:', error.message);
-    }
-  });
-
-  // Initial draw
-  redraw();
-}
-
-// Handle cleanup
-process.on('SIGINT', () => {
-  // TODO: Restore terminal state
-  console.log('\n[agent-viewer] Shutting down...');
+rl.on('close', () => {
+  console.log(`${colors.dim}Session ended.${colors.reset}`);
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
-  // TODO: Restore terminal state
-  process.exit(0);
-});
-
-main();
+// Keep process alive
+process.stdin.resume();

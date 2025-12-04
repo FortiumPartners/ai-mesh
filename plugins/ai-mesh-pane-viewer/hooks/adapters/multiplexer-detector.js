@@ -8,22 +8,45 @@ const { TmuxAdapter } = require('./tmux-adapter');
  */
 class MultiplexerDetector {
   constructor() {
-    this.adapters = [
-      new WeztermAdapter(),
-      new ZellijAdapter(),
-      new TmuxAdapter()
-    ];
+    this.adapters = {
+      wezterm: new WeztermAdapter(),
+      zellij: new ZellijAdapter(),
+      tmux: new TmuxAdapter()
+    };
+    this.priority = ['wezterm', 'zellij', 'tmux'];
   }
 
   /**
-   * Detect available multiplexers
-   * @returns {Promise<Array<BaseMultiplexerAdapter>>} Available adapters
+   * Check if running in a multiplexer session
+   * @returns {Promise<Object>} Detection result with multiplexer info
    */
-  async detectAvailable() {
-    // TODO: Implement multiplexer detection
-    // Check each adapter's isAvailable() method
-    // Return array of available adapters
-    throw new Error('MultiplexerDetector.detectAvailable() not yet implemented');
+  async detectSession() {
+    // Check WezTerm first
+    if (process.env.WEZTERM_PANE) {
+      return {
+        multiplexer: 'wezterm',
+        sessionId: process.env.WEZTERM_PANE,
+        paneId: process.env.WEZTERM_PANE
+      };
+    }
+    // Check Zellij
+    if (process.env.ZELLIJ_SESSION_NAME) {
+      return {
+        multiplexer: 'zellij',
+        sessionId: process.env.ZELLIJ_SESSION_NAME,
+        paneId: process.env.ZELLIJ_PANE_ID || null
+      };
+    }
+    // Check tmux
+    if (process.env.TMUX) {
+      const parts = process.env.TMUX.split(',');
+      return {
+        multiplexer: 'tmux',
+        sessionId: parts[0],
+        paneId: process.env.TMUX_PANE || null
+      };
+    }
+    return null;
   }
 
   /**
@@ -31,11 +54,33 @@ class MultiplexerDetector {
    * @returns {Promise<BaseMultiplexerAdapter|null>} Selected adapter or null
    */
   async autoSelect() {
-    // TODO: Implement auto-selection logic
-    // 1. Check environment variables (TERM_PROGRAM, ZELLIJ, TMUX)
-    // 2. Try each adapter's isAvailable() in order
-    // 3. Return first available adapter
-    throw new Error('MultiplexerDetector.autoSelect() not yet implemented');
+    // First check session environment
+    const session = await this.detectSession();
+    if (session) {
+      return this.adapters[session.multiplexer];
+    }
+    // Then check CLI availability
+    for (const name of this.priority) {
+      const adapter = this.adapters[name];
+      if (await adapter.isAvailable()) {
+        return adapter;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Detect available multiplexers
+   * @returns {Promise<Array<BaseMultiplexerAdapter>>} Available adapters
+   */
+  async detectAvailable() {
+    const available = [];
+    for (const name of this.priority) {
+      if (await this.adapters[name].isAvailable()) {
+        available.push(this.adapters[name]);
+      }
+    }
+    return available;
   }
 
   /**
@@ -44,23 +89,7 @@ class MultiplexerDetector {
    * @returns {BaseMultiplexerAdapter|null} Adapter or null
    */
   getAdapter(name) {
-    // TODO: Implement adapter retrieval by name
-    // Return matching adapter from this.adapters
-    throw new Error('MultiplexerDetector.getAdapter() not yet implemented');
-  }
-
-  /**
-   * Check if running in a multiplexer session
-   * @returns {Promise<Object>} Detection result with multiplexer info
-   */
-  async detectSession() {
-    // TODO: Implement session detection
-    // Check environment variables:
-    // - WEZTERM_PANE: WezTerm pane ID
-    // - ZELLIJ_SESSION_NAME: Zellij session
-    // - TMUX: tmux session info
-    // Return: { multiplexer: 'name', sessionId: 'id', paneId: 'id' }
-    throw new Error('MultiplexerDetector.detectSession() not yet implemented');
+    return this.adapters[name] || null;
   }
 }
 
