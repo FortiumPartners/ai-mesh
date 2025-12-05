@@ -83,7 +83,8 @@ class PaneManager {
       percent = 40,
       taskId,
       agentType = 'unknown',
-      description = ''
+      description = '',
+      transcriptPath = ''
     } = config;
     const state = await this.loadState();
 
@@ -92,9 +93,12 @@ class PaneManager {
       ? path.join(os.tmpdir(), `agent-signal-${taskId}`)
       : path.join(os.tmpdir(), `agent-signal-${Date.now()}`);
 
-    // Spawn new pane with simple agent-monitor script
+    // Get transcript directory for watching agent files
+    const transcriptDir = transcriptPath ? path.dirname(transcriptPath) : '';
+
+    // Spawn new pane with agent-monitor script
     const monitorPath = path.join(__dirname, 'agent-monitor.sh');
-    const command = [monitorPath, agentType, description, signalFile];
+    const command = [monitorPath, agentType, description, signalFile, transcriptDir];
 
     const paneId = await this.adapter.splitPane({
       direction,

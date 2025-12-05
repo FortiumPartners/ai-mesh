@@ -54,6 +54,9 @@ async function main(hookData) {
     const description = params.description || '';
     const taskId = hookData.tool_use_id;
 
+    // Get transcript path for real-time tool monitoring
+    const transcriptPath = hookData.transcript_path || '';
+
     // Spawn pane with agent monitor
     const manager = new PaneManager();
     await manager.getOrCreatePane({
@@ -61,7 +64,8 @@ async function main(hookData) {
       percent: config.percent,
       taskId,
       agentType,
-      description
+      description,
+      transcriptPath
     });
 
   } catch (error) {
