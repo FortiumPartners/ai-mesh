@@ -81,42 +81,20 @@ class PaneManager {
     const {
       direction = 'right',
       percent = 40,
-      reuseExisting = true,
-      transcriptPath,
       taskId,
-      agentType,
-      description
+      agentType = 'unknown',
+      description = ''
     } = config;
     const state = await this.loadState();
-    const sessionKey = `${this.adapter.name}:${process.env.WEZTERM_PANE || process.pid}`;
 
-    // Check for existing pane
-    if (reuseExisting && state.panes[sessionKey]) {
-      const existingPane = state.panes[sessionKey];
-      const paneInfo = await this.adapter.getPaneInfo(existingPane.paneId);
-      if (paneInfo) {
-        return existingPane.paneId;
-      }
-      // Pane no longer exists, clean up
-      delete state.panes[sessionKey];
-    }
+    // Generate signal file path for this task
+    const signalFile = taskId
+      ? path.join(os.tmpdir(), `agent-signal-${taskId}`)
+      : path.join(os.tmpdir(), `agent-signal-${Date.now()}`);
 
-    // Spawn new pane with agent-viewer
-    const viewerPath = path.join(__dirname, 'agent-viewer.js');
-    const command = ['node', viewerPath];
-
-    if (transcriptPath) {
-      command.push('--transcript', transcriptPath);
-    }
-    if (taskId) {
-      command.push('--task-id', taskId);
-    }
-    if (agentType) {
-      command.push('--agent', agentType);
-    }
-    if (description) {
-      command.push('--description', description);
-    }
+    // Spawn new pane with simple agent-monitor script
+    const monitorPath = path.join(__dirname, 'agent-monitor.sh');
+    const command = [monitorPath, agentType, description, signalFile];
 
     const paneId = await this.adapter.splitPane({
       direction,
@@ -124,13 +102,18 @@ class PaneManager {
       command
     });
 
-    // Save to state
-    state.panes[sessionKey] = {
-      paneId,
-      multiplexer: this.adapter.name,
-      createdAt: new Date().toISOString()
-    };
-    await this.saveState(state);
+    // Track pane by taskId so completion hook can find it
+    if (taskId) {
+      state.panes[taskId] = {
+        paneId,
+        signalFile,
+        multiplexer: this.adapter.name,
+        agentType,
+        description,
+        createdAt: new Date().toISOString()
+      };
+      await this.saveState(state);
+    }
 
     return paneId;
   }
@@ -138,14 +121,13 @@ class PaneManager {
   /**
    * Send a message to a viewer pane
    * @param {string} paneId - Pane ID
-   * @param {Object} message - Message object
+   * @param {string} message - Message string
    * @returns {Promise<void>}
    */
   async sendMessage(paneId, message) {
     await this.init();
-    const json = JSON.stringify(message);
-    // Send as escaped JSON followed by newline
-    await this.adapter.sendKeys(paneId, `${json}\n`);
+    // Send plain text followed by newline
+    await this.adapter.sendKeys(paneId, `${message}\n`);
   }
 
   /**

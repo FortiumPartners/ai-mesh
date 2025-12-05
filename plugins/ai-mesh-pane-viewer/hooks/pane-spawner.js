@@ -4,18 +4,10 @@
  * Pane Spawner Hook
  *
  * PreToolUse hook that spawns a terminal pane when a Task tool is invoked.
- * Displays real-time subagent activity in a split pane.
- *
- * Hook Flow:
- * 1. Detect if Task tool is being invoked
- * 2. Load configuration from ~/.ai-mesh-pane-viewer/config.json
- * 3. Auto-detect or use configured multiplexer
- * 4. Spawn/reuse pane with agent-viewer.js
- * 5. Send agent name and task info to viewer
+ * Displays subagent status in a split pane.
  *
  * Environment Variables:
  * - AI_MESH_PANE_DISABLE: Set to '1' to disable pane spawning
- * - AI_MESH_PANE_MULTIPLEXER: Override auto-detection ('wezterm', 'zellij', 'tmux')
  */
 
 const { PaneManager } = require('./pane-manager');
@@ -24,7 +16,6 @@ const path = require('path');
 const os = require('os');
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-mesh-pane-viewer', 'config.json');
-const ACTIVE_AGENTS_PATH = path.join(os.homedir(), '.ai-mesh-pane-viewer', 'active-agents.json');
 
 function loadConfig() {
   try {
@@ -35,26 +26,8 @@ function loadConfig() {
   return {
     enabled: true,
     direction: 'right',
-    percent: 40,
-    reusePane: true
+    percent: 30
   };
-}
-
-function loadActiveAgents() {
-  try {
-    if (fs.existsSync(ACTIVE_AGENTS_PATH)) {
-      return JSON.parse(fs.readFileSync(ACTIVE_AGENTS_PATH, 'utf-8'));
-    }
-  } catch {}
-  return {};
-}
-
-function saveActiveAgents(agents) {
-  const dir = path.dirname(ACTIVE_AGENTS_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(ACTIVE_AGENTS_PATH, JSON.stringify(agents, null, 2));
 }
 
 async function main(hookData) {
@@ -69,45 +42,27 @@ async function main(hookData) {
       return;
     }
 
-    // Only handle Task tool (Claude sends tool_name, not tool)
+    // Only handle Task tool
     const toolName = hookData.tool_name || hookData.tool;
     if (toolName !== 'Task') {
       return;
     }
 
-    // Extract agent info from parameters (Claude sends tool_input, not parameters)
-    const params = hookData.tool_input || hookData.parameters || hookData.input || {};
+    // Extract agent info
+    const params = hookData.tool_input || hookData.parameters || {};
     const agentType = params.subagent_type || 'unknown';
     const description = params.description || '';
-    const transcriptPath = hookData.transcript_path;
     const taskId = hookData.tool_use_id;
 
-    // Initialize pane manager
+    // Spawn pane with agent monitor
     const manager = new PaneManager();
-
-    // Always create a NEW pane for each subagent so it gets fresh transcript watching
-    const paneId = await manager.getOrCreatePane({
+    await manager.getOrCreatePane({
       direction: config.direction,
       percent: config.percent,
-      reuseExisting: false,  // Don't reuse - each agent gets its own viewer
-      transcriptPath,
       taskId,
       agentType,
       description
     });
-
-    // Track agent start time for duration calculation
-    const agentKey = `${agentType}:${description}`.substring(0, 100);
-    const activeAgents = loadActiveAgents();
-    activeAgents[agentKey] = {
-      startTime: new Date().toISOString(),
-      agent: agentType,
-      description: description,
-      paneId: paneId,
-      taskId: taskId,
-      transcriptPath: transcriptPath
-    };
-    saveActiveAgents(activeAgents);
 
   } catch (error) {
     // Fail silently to not interrupt Claude Code workflow
