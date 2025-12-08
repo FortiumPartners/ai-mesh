@@ -44,6 +44,11 @@
 - **Manual close**: Waits for user keypress instead of auto-close with timeout
 - **Transcript watching**: Monitors Claude Code's transcript files for tool execution data
 
+**Zellij CLI Limitations:**
+- **No pane ID exposure**: Zellij doesn't expose pane IDs via CLI, so placeholder IDs are used
+- **Focused pane operations**: `closePane()` and `sendKeys()` operate on the focused pane (CLI limitation)
+- **No pane info queries**: `getPaneInfo()` returns null (no CLI support for pane queries)
+
 ### 🔄 **Next Priorities**
 
 **✅ COMPLETED - Output Capture & Logging (Sprint 5):**

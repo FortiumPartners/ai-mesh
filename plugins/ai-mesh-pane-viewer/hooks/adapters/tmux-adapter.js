@@ -1,5 +1,5 @@
 const { BaseMultiplexerAdapter } = require('./base-adapter');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 
 /**
  * tmux multiplexer adapter
@@ -17,6 +17,11 @@ class TmuxAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<boolean>}
    */
   async isAvailable() {
+    // Check TMUX environment variable first (most reliable)
+    if (process.env.TMUX) {
+      return true;
+    }
+    // Fallback to CLI check
     try {
       execSync('which tmux', { stdio: 'pipe' });
       return true;
@@ -31,13 +36,52 @@ class TmuxAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<string>} Pane ID
    */
   async splitPane(options) {
-    // TODO: Implement tmux pane splitting
-    // tmux commands:
-    // - tmux split-window -h -p 30 "command"  (horizontal split, 30% width)
-    // - tmux split-window -v -p 30 "command"  (vertical split, 30% height)
-    // Return format: "%123" (pane ID)
-    // Get pane ID with: tmux display-message -p '#{pane_id}'
-    throw new Error('TmuxAdapter.splitPane() not yet implemented');
+    const { direction = 'right', percent = 40, command, cwd } = options;
+
+    // Map direction to tmux flags
+    // horizontal split (-h) = side by side (left/right)
+    // vertical split (-v) = stacked (top/bottom)
+    const directionFlag = direction === 'bottom' || direction === 'down'
+      ? '-v'
+      : '-h';
+
+    const args = [
+      'split-window',
+      directionFlag,
+      '-p', String(percent),
+      '-d',  // Don't focus new pane
+      '-P', '-F', '#{pane_id}'  // Print pane ID
+    ];
+
+    if (cwd) {
+      args.push('-c', cwd);
+    }
+
+    if (command) {
+      if (Array.isArray(command)) {
+        args.push(command.join(' '));
+      } else {
+        args.push(command);
+      }
+    }
+
+    try {
+      // Use spawnSync to avoid shell escaping issues with special characters
+      const result = spawnSync('tmux', args, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr || 'Unknown error';
+        throw new Error(stderr);
+      }
+
+      // tmux returns the pane ID (e.g., "%123")
+      return (result.stdout || '').trim();
+    } catch (error) {
+      throw new Error(`Failed to split pane: ${error.message}`);
+    }
   }
 
   /**
@@ -46,9 +90,19 @@ class TmuxAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<void>}
    */
   async closePane(paneId) {
-    // TODO: Implement tmux pane closing
-    // tmux kill-pane -t <pane-id>
-    throw new Error('TmuxAdapter.closePane() not yet implemented');
+    try {
+      const result = spawnSync('tmux', ['kill-pane', '-t', paneId], {
+        stdio: 'pipe'
+      });
+
+      if (result.status !== 0 && result.stderr) {
+        // Pane may already be closed
+        console.error(`[tmux] closePane warning: ${result.stderr.toString()}`);
+      }
+    } catch (error) {
+      // Pane may already be closed
+      console.error(`[tmux] closePane warning: ${error.message}`);
+    }
   }
 
   /**
@@ -58,9 +112,21 @@ class TmuxAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<void>}
    */
   async sendKeys(paneId, keys) {
-    // TODO: Implement tmux key sending
-    // tmux send-keys -t <pane-id> "text" Enter
-    throw new Error('TmuxAdapter.sendKeys() not yet implemented');
+    try {
+      // Use spawnSync with explicit args to avoid shell escaping issues
+      const result = spawnSync('tmux', [
+        'send-keys',
+        '-t', paneId,
+        keys
+      ], { stdio: 'pipe' });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr ? result.stderr.toString() : 'Unknown error';
+        throw new Error(stderr);
+      }
+    } catch (error) {
+      throw new Error(`Failed to send keys: ${error.message}`);
+    }
   }
 
   /**
@@ -69,9 +135,72 @@ class TmuxAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<Object>}
    */
   async getPaneInfo(paneId) {
-    // TODO: Implement tmux pane info retrieval
-    // tmux list-panes -F "#{pane_id}:#{pane_width}:#{pane_height}:#{pane_current_command}"
-    throw new Error('TmuxAdapter.getPaneInfo() not yet implemented');
+    try {
+      // List all panes with format: pane_id:pane_width:pane_height:pane_current_command
+      const result = spawnSync('tmux', [
+        'list-panes',
+        '-a',  // All sessions
+        '-F', '#{pane_id}:#{pane_width}:#{pane_height}:#{pane_current_command}'
+      ], {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      if (result.status !== 0) {
+        return null;
+      }
+
+      const lines = result.stdout.trim().split('\n');
+      for (const line of lines) {
+        const [id, width, height, command] = line.split(':');
+        if (id === paneId) {
+          return {
+            pane_id: id,
+            width: parseInt(width, 10),
+            height: parseInt(height, 10),
+            current_command: command
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error(`[tmux] getPaneInfo error: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * List all tmux panes
+   * @returns {Promise<Array>} List of panes
+   */
+  async listPanes() {
+    try {
+      const result = spawnSync('tmux', [
+        'list-panes',
+        '-a',  // All sessions
+        '-F', '#{pane_id}:#{pane_width}:#{pane_height}:#{pane_current_command}'
+      ], {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      if (result.status !== 0) {
+        return [];
+      }
+
+      const lines = result.stdout.trim().split('\n').filter(line => line);
+      return lines.map(line => {
+        const [id, width, height, command] = line.split(':');
+        return {
+          pane_id: id,
+          width: parseInt(width, 10),
+          height: parseInt(height, 10),
+          current_command: command
+        };
+      });
+    } catch {
+      return [];
+    }
   }
 }
 

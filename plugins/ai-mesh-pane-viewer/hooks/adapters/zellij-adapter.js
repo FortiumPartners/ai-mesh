@@ -17,10 +17,15 @@ class ZellijAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<boolean>}
    */
   async isAvailable() {
+    // Check ZELLIJ_SESSION_NAME environment variable first (most reliable)
+    if (process.env.ZELLIJ_SESSION_NAME || process.env.ZELLIJ) {
+      return true;
+    }
+    // Fallback to CLI check
     try {
       execSync('which zellij', { stdio: 'pipe' });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -28,40 +33,108 @@ class ZellijAdapter extends BaseMultiplexerAdapter {
   /**
    * Split a pane in Zellij
    * @param {Object} options - Split options
-   * @returns {Promise<string>} Pane ID
+   * @returns {Promise<string>} Pane ID (placeholder for Zellij)
    */
   async splitPane(options) {
-    // TODO: Implement Zellij pane splitting
-    // Zellij actions:
-    // - zellij action new-pane --direction right --size "30%"
-    // - zellij action new-pane --floating (for floating panes)
-    // - zellij run -- command args
-    // Return format: pane ID or index
-    throw new Error('ZellijAdapter.splitPane() not yet implemented');
+    const { direction = 'right', command, cwd, name } = options;
+
+    // Map direction to Zellij flags
+    const directionFlag = direction === 'bottom' || direction === 'down'
+      ? 'down'
+      : 'right';
+
+    const args = [
+      'run',
+      '--direction', directionFlag,
+      '--close-on-exit' // Close pane when command exits
+    ];
+
+    if (cwd) {
+      args.push('--cwd', cwd);
+    }
+
+    if (name) {
+      args.push('--name', name);
+    }
+
+    // Add the command separator
+    args.push('--');
+
+    // Add the command to run
+    if (command) {
+      if (Array.isArray(command)) {
+        args.push(...command);
+      } else {
+        args.push(command);
+      }
+    } else {
+      // Default to shell if no command specified
+      args.push(process.env.SHELL || '/bin/sh');
+    }
+
+    try {
+      // Use spawnSync to avoid shell escaping issues with special characters
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('zellij', args, {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr || 'Unknown error';
+        throw new Error(stderr);
+      }
+
+      // Zellij doesn't return pane IDs easily from CLI
+      // Return a placeholder timestamp-based ID for tracking
+      return `zellij-${Date.now()}`;
+    } catch (error) {
+      throw new Error(`Failed to split pane: ${error.message}`);
+    }
   }
 
   /**
    * Close a Zellij pane
-   * @param {string} paneId - Pane ID
+   * @param {string} paneId - Pane ID (ignored for Zellij)
    * @returns {Promise<void>}
    */
   async closePane(paneId) {
-    // TODO: Implement Zellij pane closing
-    // zellij action close-pane
-    throw new Error('ZellijAdapter.closePane() not yet implemented');
+    try {
+      // Zellij's close-pane closes the currently focused pane
+      // We cannot close a specific pane by ID from CLI
+      // This is a best-effort approach
+      const { spawnSync } = require('child_process');
+      spawnSync('zellij', ['action', 'close-pane'], { stdio: 'pipe' });
+    } catch (error) {
+      // Pane may already be closed or not focused
+      console.error(`[zellij] closePane warning: ${error.message}`);
+    }
   }
 
   /**
    * Send keys to a Zellij pane
-   * @param {string} paneId - Pane ID
-   * @param {string} keys - Keys to send
+   * @param {string} paneId - Pane ID (ignored for Zellij)
+   * @param {string} text - Text to send
    * @returns {Promise<void>}
    */
-  async sendKeys(paneId, keys) {
-    // TODO: Implement Zellij key sending
-    // zellij action write <pane-id> "text"
-    // or zellij action write-chars "text"
-    throw new Error('ZellijAdapter.sendKeys() not yet implemented');
+  async sendKeys(paneId, text) {
+    try {
+      // Use write-chars to send text to currently focused pane
+      // Zellij doesn't support targeting specific panes by ID from CLI
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('zellij', [
+        'action',
+        'write-chars',
+        text
+      ], { stdio: 'pipe' });
+
+      if (result.status !== 0) {
+        const stderr = result.stderr ? result.stderr.toString() : 'Unknown error';
+        throw new Error(stderr);
+      }
+    } catch (error) {
+      throw new Error(`Failed to send text: ${error.message}`);
+    }
   }
 
   /**
@@ -70,9 +143,10 @@ class ZellijAdapter extends BaseMultiplexerAdapter {
    * @returns {Promise<Object>}
    */
   async getPaneInfo(paneId) {
-    // TODO: Implement Zellij pane info retrieval
-    // May need to use session info or plugin queries
-    throw new Error('ZellijAdapter.getPaneInfo() not yet implemented');
+    // Zellij doesn't expose pane information through CLI like WezTerm does
+    // Return null to indicate information is not available
+    // The pane viewer will work without this information
+    return null;
   }
 }
 
