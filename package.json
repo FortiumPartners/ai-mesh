@@ -69,6 +69,7 @@
     "cli-progress": "^3.12.0",
     "date-fns": "^2.30.0",
     "fast-glob": "^3.3.3",
+    "handlebars": "^4.7.8",
     "js-yaml": "^4.1.1",
     "marked": "^9.1.2",
     "node-fetch": "^3.3.2",

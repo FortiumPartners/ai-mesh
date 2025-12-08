@@ -1,0 +1,515 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fortium.dev/schemas/trd-workflow/workflow-section/v1",
+  "title": "Workflow Section Template Schema",
+  "description": "JSON Schema for TRD workflow section templates with conditional rendering",
+  "type": "object",
+  "required": [
+    "templateId",
+    "version",
+    "format",
+    "variables",
+    "sections"
+  ],
+  "properties": {
+    "templateId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Unique identifier for the workflow template in kebab-case"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200,
+      "description": "Brief description of the workflow template's purpose"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["handlebars", "mustache"],
+      "description": "Template rendering engine format"
+    },
+    "variables": {
+      "type": "object",
+      "description": "Available template variables for workflow rendering",
+      "required": [
+        "trd_id",
+        "task_count",
+        "sprint_count"
+      ],
+      "properties": {
+        "trd_id": {
+          "type": "object",
+          "required": ["description", "type"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the TRD ID variable"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["string"],
+              "default": "string"
+            },
+            "pattern": {
+              "type": "string",
+              "default": "^TRD-[A-Z0-9-]+$",
+              "description": "Validation pattern for TRD IDs"
+            }
+          }
+        },
+        "task_count": {
+          "type": "object",
+          "required": ["description", "type"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["number"],
+              "default": "number"
+            },
+            "min": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Minimum task count"
+            }
+          }
+        },
+        "sprint_count": {
+          "type": "object",
+          "required": ["description", "type"],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["number"],
+              "default": "number"
+            }
+          }
+        },
+        "phase_count": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["number"],
+              "default": "number"
+            }
+          }
+        },
+        "execution_command": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["string"],
+              "default": "string"
+            },
+            "allowed_values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "/implement-trd",
+                  "/orchestrate-tasks",
+                  "/build"
+                ]
+              }
+            }
+          }
+        },
+        "recommended_approach": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["string"],
+              "default": "string"
+            }
+          }
+        },
+        "quality_gates": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["array"],
+              "default": "array"
+            },
+            "item_type": {
+              "type": "string",
+              "enum": ["object"],
+              "default": "object"
+            }
+          }
+        },
+        "delegation_patterns": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["array"],
+              "default": "array"
+            }
+          }
+        },
+        "git_checkpoints": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["array"],
+              "default": "array"
+            }
+          }
+        },
+        "is_simple_trd": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["boolean"],
+              "default": "boolean"
+            },
+            "condition": {
+              "type": "string",
+              "description": "Condition expression (e.g., 'task_count < 20')"
+            }
+          }
+        },
+        "is_complex_trd": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["boolean"],
+              "default": "boolean"
+            },
+            "condition": {
+              "type": "string",
+              "description": "Condition expression (e.g., 'task_count >= 20')"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom variables can be defined"
+      }
+    },
+    "sections": {
+      "type": "object",
+      "description": "Template sections for different complexity levels",
+      "required": ["default"],
+      "properties": {
+        "default": {
+          "type": "object",
+          "required": ["template"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of this workflow variant"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 50,
+              "description": "The Handlebars/Mustache template string"
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Conditions for using this template variant"
+            },
+            "output_format": {
+              "type": "string",
+              "enum": ["markdown", "html", "text"],
+              "default": "markdown"
+            }
+          }
+        },
+        "simple_trd": {
+          "type": "object",
+          "description": "Template for TRDs with <20 tasks",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 50
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["task_count < 20"]
+            },
+            "output_format": {
+              "type": "string",
+              "enum": ["markdown", "html", "text"],
+              "default": "markdown"
+            }
+          }
+        },
+        "complex_trd": {
+          "type": "object",
+          "description": "Template for TRDs with 20+ tasks",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 50
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["task_count >= 20"]
+            },
+            "output_format": {
+              "type": "string",
+              "enum": ["markdown", "html", "text"],
+              "default": "markdown"
+            }
+          }
+        },
+        "multi_phase": {
+          "type": "object",
+          "description": "Template for multi-phase TRDs",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 50
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["phase_count > 1"]
+            },
+            "output_format": {
+              "type": "string",
+              "enum": ["markdown", "html", "text"],
+              "default": "markdown"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom workflow section variants"
+      }
+    },
+    "conditionalRendering": {
+      "type": "object",
+      "description": "Rules for conditional rendering logic",
+      "properties": {
+        "enableConditionals": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable conditional rendering features"
+        },
+        "defaultSection": {
+          "type": "string",
+          "default": "default",
+          "description": "Default section to use when no conditions match"
+        },
+        "evaluationOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Order to evaluate section conditions (first match wins)"
+        },
+        "helpers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "function"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Helper function name"
+              },
+              "function": {
+                "type": "string",
+                "description": "Helper function implementation or reference"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of what the helper does"
+              }
+            }
+          },
+          "description": "Custom Handlebars/Mustache helper functions"
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "description": "Reusable template components",
+      "properties": {
+        "execution_command_section": {
+          "type": "object",
+          "properties": {
+            "template": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "quality_gates_section": {
+          "type": "object",
+          "properties": {
+            "template": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "delegation_patterns_section": {
+          "type": "object",
+          "properties": {
+            "template": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        },
+        "git_workflow_section": {
+          "type": "object",
+          "properties": {
+            "template": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "description": "Custom reusable components"
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Validation rules for workflow sections",
+      "properties": {
+        "require_execution_command": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require execution command in workflow"
+        },
+        "require_quality_gates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require quality gates specification"
+        },
+        "require_git_workflow": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require git workflow guidance"
+        },
+        "min_checkpoint_count": {
+          "type": "number",
+          "minimum": 0,
+          "default": 1,
+          "description": "Minimum number of git checkpoints required"
+        },
+        "output_validation": {
+          "type": "object",
+          "properties": {
+            "validate_markdown": {
+              "type": "boolean",
+              "default": true,
+              "description": "Validate markdown syntax in output"
+            },
+            "max_section_length": {
+              "type": "number",
+              "minimum": 100,
+              "description": "Maximum length for rendered section"
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Template metadata",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "created": {
+          "type": "string",
+          "format": "date"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "compatibleWithTrdVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Compatible TRD template version"
+        }
+      }
+    }
+  }
+}

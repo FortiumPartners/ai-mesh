@@ -1,0 +1,274 @@
+name: Validate Plugin Registry
+
+on:
+  pull_request:
+    paths:
+      - 'registry/plugins.json'
+      - 'schemas/registry-schema.json'
+  push:
+    branches:
+      - main
+    paths:
+      - 'registry/plugins.json'
+      - 'schemas/registry-schema.json'
+
+jobs:
+  validate:
+    name: Validate Registry
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install -g ajv-cli ajv-formats
+
+      - name: Validate registry against schema
+        run: |
+          echo "Validating registry/plugins.json..."
+          ajv validate \
+            -s schemas/registry-schema.json \
+            -d registry/plugins.json \
+            --strict=false \
+            --verbose
+
+      - name: Check registry metadata consistency
+        run: |
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          // Verify metadata counts
+          const totalPlugins = registry.plugins.length;
+          const activePlugins = registry.plugins.filter(p => p.status !== 'deprecated').length;
+          const deprecatedPlugins = registry.plugins.filter(p => p.status === 'deprecated').length;
+          const featuredPlugins = registry.plugins.filter(p => p.featured === true).length;
+
+          console.log('Registry Statistics:');
+          console.log('  Total plugins:', totalPlugins);
+          console.log('  Active plugins:', activePlugins);
+          console.log('  Deprecated plugins:', deprecatedPlugins);
+          console.log('  Featured plugins:', featuredPlugins);
+
+          // Verify metadata matches
+          if (registry.metadata) {
+            if (registry.metadata.totalPlugins !== totalPlugins) {
+              console.error('❌ Metadata totalPlugins mismatch:', registry.metadata.totalPlugins, 'vs', totalPlugins);
+              process.exit(1);
+            }
+            if (registry.metadata.activePlugins !== activePlugins) {
+              console.error('❌ Metadata activePlugins mismatch:', registry.metadata.activePlugins, 'vs', activePlugins);
+              process.exit(1);
+            }
+            if (registry.metadata.deprecatedPlugins !== deprecatedPlugins) {
+              console.error('❌ Metadata deprecatedPlugins mismatch:', registry.metadata.deprecatedPlugins, 'vs', deprecatedPlugins);
+              process.exit(1);
+            }
+            if (registry.metadata.featuredPlugins !== featuredPlugins) {
+              console.error('❌ Metadata featuredPlugins mismatch:', registry.metadata.featuredPlugins, 'vs', featuredPlugins);
+              process.exit(1);
+            }
+          }
+
+          console.log('✅ Metadata consistency verified');
+          "
+
+      - name: Check for duplicate plugin names
+        run: |
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          const names = registry.plugins.map(p => p.name);
+          const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
+
+          if (duplicates.length > 0) {
+            console.error('❌ Duplicate plugin names found:', duplicates);
+            process.exit(1);
+          }
+
+          console.log('✅ No duplicate plugin names');
+          "
+
+      - name: Verify plugin URLs are accessible
+        run: |
+          node -e "
+          const https = require('https');
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          async function checkUrl(url) {
+            return new Promise((resolve, reject) => {
+              https.get(url, (res) => {
+                if (res.statusCode === 200 || res.statusCode === 301 || res.statusCode === 302) {
+                  resolve(true);
+                } else {
+                  reject(new Error(\`Status \${res.statusCode}\`));
+                }
+              }).on('error', reject);
+            });
+          }
+
+          async function validateUrls() {
+            console.log('Checking plugin URLs...');
+
+            for (const plugin of registry.plugins) {
+              if (plugin.repository) {
+                try {
+                  await checkUrl(plugin.repository);
+                  console.log(\`✅ \${plugin.name}: repository URL OK\`);
+                } catch (error) {
+                  console.error(\`❌ \${plugin.name}: repository URL failed - \${error.message}\`);
+                  process.exit(1);
+                }
+              }
+            }
+
+            console.log('✅ All URLs validated');
+          }
+
+          validateUrls();
+          "
+
+      - name: Check semver versions
+        run: |
+          node -e "
+          const fs = require('fs');
+          const semver = require('semver');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          console.log('Validating semver versions...');
+
+          for (const plugin of registry.plugins) {
+            if (!semver.valid(plugin.version)) {
+              console.error(\`❌ \${plugin.name}: invalid version \${plugin.version}\`);
+              process.exit(1);
+            }
+            console.log(\`✅ \${plugin.name}@\${plugin.version}\`);
+          }
+
+          console.log('✅ All versions are valid semver');
+          "
+
+      - name: Verify categories exist
+        run: |
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          const validCategories = registry.categories.map(c => c.id);
+          console.log('Valid categories:', validCategories);
+
+          for (const plugin of registry.plugins) {
+            if (!validCategories.includes(plugin.category)) {
+              console.error(\`❌ \${plugin.name}: invalid category \${plugin.category}\`);
+              process.exit(1);
+            }
+          }
+
+          console.log('✅ All plugin categories are valid');
+          "
+
+      - name: Check for required fields
+        run: |
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          const requiredFields = ['name', 'displayName', 'description', 'version', 'author', 'repository', 'category'];
+
+          for (const plugin of registry.plugins) {
+            for (const field of requiredFields) {
+              if (!plugin[field]) {
+                console.error(\`❌ \${plugin.name || 'Unknown'}: missing required field '\${field}'\`);
+                process.exit(1);
+              }
+            }
+          }
+
+          console.log('✅ All required fields present');
+          "
+
+      - name: Validate lastUpdated timestamp
+        run: |
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          const lastUpdated = new Date(registry.lastUpdated);
+          const now = new Date();
+
+          if (isNaN(lastUpdated.getTime())) {
+            console.error('❌ Invalid lastUpdated timestamp');
+            process.exit(1);
+          }
+
+          if (lastUpdated > now) {
+            console.error('❌ lastUpdated is in the future');
+            process.exit(1);
+          }
+
+          console.log('✅ lastUpdated timestamp is valid:', registry.lastUpdated);
+          "
+
+      - name: Generate validation report
+        if: success()
+        run: |
+          echo "## Registry Validation Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All validation checks passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node -e "
+          const fs = require('fs');
+          const registry = JSON.parse(fs.readFileSync('registry/plugins.json', 'utf8'));
+
+          console.log('### Registry Statistics');
+          console.log('');
+          console.log('- Total Plugins:', registry.plugins.length);
+          console.log('- Active Plugins:', registry.plugins.filter(p => p.status !== 'deprecated').length);
+          console.log('- Featured Plugins:', registry.plugins.filter(p => p.featured).length);
+          console.log('- Categories:', registry.categories.length);
+          console.log('');
+          console.log('### Plugins by Category');
+
+          const byCategory = {};
+          registry.plugins.forEach(p => {
+            byCategory[p.category] = (byCategory[p.category] || 0) + 1;
+          });
+
+          for (const [category, count] of Object.entries(byCategory)) {
+            console.log(\`- \${category}: \${count}\`);
+          }
+          " >> $GITHUB_STEP_SUMMARY
+
+  lint:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check formatting with Prettier
+        run: npx prettier --check "**/*.{js,json,md}"

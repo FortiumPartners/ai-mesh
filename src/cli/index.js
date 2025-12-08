@@ -11,6 +11,8 @@ const { CommandMigrator } = require('../installer/command-migrator.js');
 const { SkillInstaller } = require('../installer/skill-installer.js');
 const { RuntimeSetup } = require('../installer/runtime-setup.js');
 const { SettingsManager } = require('../installer/settings-manager.js');
+const { MCPServerInstaller } = require('../installer/mcp-server-installer.js');
+const { PluginInstaller } = require('../installer/plugin-installer.js');
 const { Logger } = require('../utils/logger.js');
 const { Validator } = require('../utils/validator.js');
 
@@ -32,6 +34,8 @@ class ClaudeInstaller {
         return this.validate(args.slice(1));
       case 'uninstall':
         return this.uninstall(args.slice(1));
+      case 'trd-workflow':
+        return this.trdWorkflow(args.slice(1));
       case '--help':
       case '-h':
       case 'help':
@@ -44,6 +48,12 @@ class ClaudeInstaller {
         this.showHelp();
         process.exit(1);
     }
+  }
+
+  async trdWorkflow(args) {
+    const { TrdWorkflowCommands } = require('./trd-workflow-commands.js');
+    const trdCmd = new TrdWorkflowCommands(this.logger);
+    return trdCmd.run(args);
   }
 
   async install(args) {
@@ -114,6 +124,8 @@ class ClaudeInstaller {
         'Installing commands',
         'Migrating commands to subdirectories',
         'Installing skills',
+        'Installing plugins',
+        'Installing MCP servers',
         'Configuring settings',
         'Validating installation'
       ];
@@ -195,8 +207,46 @@ class ClaudeInstaller {
         await skillInstaller.install(options.tool);
       }
 
-      // Step 6: Configure settings
+      // Step 6: Install plugins
       updateProgress(steps[5]);
+      let pluginResult = null;
+      if (options.dryRun) {
+        const fs = require('fs');
+        const pluginDirs = fs.readdirSync(path.join(__dirname, '../../plugins'), { withFileTypes: true })
+          .filter(d => d.isDirectory());
+        this.logger.info(`[DRY RUN] Would install ${pluginDirs.length} plugins`);
+      } else if (options.tool === 'claude') {
+        try {
+          const pluginInstaller = new PluginInstaller(installPath, this.logger, options);
+          pluginResult = await pluginInstaller.install(options.tool);
+        } catch (error) {
+          this.logger.warning(`⚠️  Plugin installation failed (non-critical): ${error.message}`);
+          pluginResult = { installed: 0, skipped: 0, plugins: [] };
+        }
+      } else {
+        this.logger.info(`Skipping plugin installation for ${options.tool}`);
+      }
+
+      // Step 7: Install MCP servers
+      updateProgress(steps[6]);
+      let mcpResult = null;
+      if (options.dryRun) {
+        this.logger.info('[DRY RUN] Would install TRD Workflow MCP server');
+      } else if (options.tool === 'claude') {
+        try {
+          const mcpInstaller = new MCPServerInstaller(installPath, this.logger, options);
+          mcpResult = await mcpInstaller.install(scope);
+          this.logger.success(`✅ MCP Server: ${mcpResult.filesCopied} files, registered: ${mcpResult.registered}`);
+        } catch (error) {
+          this.logger.warning(`⚠️  MCP Server installation failed (non-critical): ${error.message}`);
+          mcpResult = { success: false, error: error.message };
+        }
+      } else {
+        this.logger.info(`Skipping MCP server installation for ${options.tool}`);
+      }
+
+      // Step 8: Configure settings
+      updateProgress(steps[7]);
       if (options.dryRun) {
         if (options.tool === 'claude') {
           this.logger.info('[DRY RUN] Would configure Claude Code settings');
@@ -210,8 +260,8 @@ class ClaudeInstaller {
         this.logger.info(`Skipping settings configuration for ${options.tool}`);
       }
 
-      // Step 7: Validate installation
-      updateProgress(steps[6]);
+      // Step 9: Validate installation
+      updateProgress(steps[8]);
       if (options.dryRun) {
         this.logger.info('[DRY RUN] Would validate installation integrity');
         this.showDryRunSummary(installPath, options.tool, scope);
@@ -220,7 +270,7 @@ class ClaudeInstaller {
 
         if (validation.success) {
           this.logger.success('✅ Installation completed successfully!');
-          this.showInstallationSummary(validation.summary, installPath, options.tool);
+          this.showInstallationSummary(validation.summary, installPath, options.tool, mcpResult, pluginResult);
         } else {
           this.logger.error('❌ Installation validation failed');
           this.logger.error(validation.errors.join('\\n'));
@@ -351,7 +401,7 @@ class ClaudeInstaller {
     }
   }
 
-  showInstallationSummary(summary, installPath, tool) {
+  showInstallationSummary(summary, installPath, tool, mcpResult, pluginResult) {
     console.log('\n' + '='.repeat(60));
     console.log('🎉 INSTALLATION COMPLETE!');
     console.log('='.repeat(60));
@@ -360,6 +410,22 @@ class ClaudeInstaller {
     console.log('');
     console.log(`✅ Agents installed: ${summary.agents}`);
     console.log(`✅ Commands installed: ${summary.commands}`);
+
+    // Show plugin status if applicable
+    if (pluginResult && tool === 'claude') {
+      if (pluginResult.installed > 0) {
+        console.log(`✅ Plugins installed: ${pluginResult.installed} (${pluginResult.plugins.join(', ')})`);
+      } else {
+        console.log(`⚠️  Plugins: ${pluginResult.skipped} skipped`);
+      }
+    }
+
+    // Show MCP server status if applicable
+    if (mcpResult && tool === 'claude') {
+      const mcpStatus = mcpResult.success ? '✅ Installed' : '⚠️  Failed (non-critical)';
+      console.log(`${mcpStatus} MCP Server: trd-workflow`);
+    }
+
     console.log('');
     console.log('🚀 Next steps:');
     console.log('  1. Restart Claude Code to load the new configuration');
@@ -569,13 +635,15 @@ class ClaudeInstaller {
     this.logger.info('🔍 Validating Claude Configuration...');
 
     const options = this.parseInstallOptions(args);
-    
+
     // Determine tool if not specified
     const tool = options.tool || 'claude';
 
     // Try to detect which installation exists, or use specified scope
     let installPath;
+    let scope;
     if (options.scope) {
+      scope = options.scope;
       installPath = this.getInstallPath(options.scope, tool);
     } else {
       // Check local first, then global
@@ -587,21 +655,61 @@ class ClaudeInstaller {
 
       if (localValidation.success) {
         installPath = localPath;
+        scope = 'local';
         this.logger.info('📍 Found local installation');
       } else if (globalValidation.success) {
         installPath = globalPath;
+        scope = 'global';
         this.logger.info('📍 Found global installation');
       } else {
         // If neither works, default to global for error reporting
         installPath = globalPath;
+        scope = 'global';
       }
     }
 
     const validation = await this.validator.validateInstallation(installPath, tool);
 
+    // Validate MCP server if tool is claude
+    let mcpValidation = null;
+    if (tool === 'claude') {
+      try {
+        const mcpInstaller = new MCPServerInstaller(installPath, this.logger, options);
+        mcpValidation = await mcpInstaller.validate(scope);
+      } catch (error) {
+        this.logger.debug(`MCP validation error: ${error.message}`);
+      }
+    }
+
     if (validation.success) {
       this.logger.success('✅ Installation is valid and working correctly!');
       this.logger.info(`📁 Installation path: ${installPath[tool]}`);
+      this.logger.info('');
+
+      // Display MCP server status
+      if (mcpValidation && tool === 'claude') {
+        this.logger.info('🔌 MCP Server Status:');
+        if (mcpValidation.success) {
+          this.logger.success('  ✅ trd-workflow server: Installed and configured');
+          if (mcpValidation.details.registered) {
+            this.logger.info('  ✅ Registered in MCP config');
+          }
+        } else {
+          this.logger.warning('  ⚠️  trd-workflow server: Not installed');
+          if (mcpValidation.errors.length > 0) {
+            mcpValidation.errors.forEach(error => this.logger.error(`    • ${error}`));
+          }
+          this.logger.info('');
+          this.logger.info('💡 To install MCP server, run:');
+          this.logger.info(`   ai-mesh install --tool ${tool} ${scope === 'global' ? '--global' : '--local'} --force`);
+        }
+
+        if (mcpValidation.warnings.length > 0) {
+          this.logger.info('');
+          this.logger.info('⚠️  Warnings:');
+          mcpValidation.warnings.forEach(warning => this.logger.warning(`  • ${warning}`));
+        }
+      }
     } else {
       this.logger.error('❌ Validation failed:');
       validation.errors.forEach(error => this.logger.error(`  • ${error}`));
@@ -611,8 +719,99 @@ class ClaudeInstaller {
 
   async uninstall(args) {
     this.logger.info('🗑️  Uninstalling Claude Configuration...');
-    // TODO: Implement uninstall logic
-    this.logger.warning('Uninstall functionality coming soon!');
+
+    const options = this.parseInstallOptions(args);
+
+    try {
+      // Determine tool if not specified
+      if (!options.tool) {
+        options.tool = await this.determineTool();
+      }
+
+      // Determine scope
+      let scope = options.scope;
+      if (!scope) {
+        const localPath = this.getInstallPath('local', options.tool);
+        const globalPath = this.getInstallPath('global', options.tool);
+
+        const localExists = await this.validator.checkInstallationExists(localPath, options.tool);
+        const globalExists = await this.validator.checkInstallationExists(globalPath, options.tool);
+
+        if (localExists && globalExists) {
+          this.logger.warning('⚠️  Found both local and global installations');
+          scope = await this.determineScope(options);
+        } else if (localExists) {
+          scope = 'local';
+          this.logger.info('📍 Detected local installation');
+        } else if (globalExists) {
+          scope = 'global';
+          this.logger.info('📍 Detected global installation');
+        } else {
+          this.logger.error('❌ No installation found to uninstall');
+          process.exit(1);
+        }
+      }
+
+      const installPath = this.getInstallPath(scope, options.tool);
+
+      // Confirm uninstall
+      this.logger.warning(`⚠️  This will remove all configuration from: ${installPath[options.tool]}`);
+      const confirmed = await this.promptYesNo('Are you sure you want to uninstall?');
+
+      if (!confirmed) {
+        this.logger.info('❌ Uninstall cancelled');
+        process.exit(0);
+      }
+
+      // Uninstall MCP server first (if claude)
+      if (options.tool === 'claude') {
+        try {
+          this.logger.info('🔌 Uninstalling MCP servers...');
+          const mcpInstaller = new MCPServerInstaller(installPath, this.logger, options);
+          await mcpInstaller.uninstall(scope);
+        } catch (error) {
+          this.logger.warning(`⚠️  MCP server uninstall failed: ${error.message}`);
+        }
+      }
+
+      // Remove directories
+      this.logger.info('🗑️  Removing configuration files...');
+      const dirsToRemove = [
+        path.join(installPath[options.tool], 'agents'),
+        path.join(installPath[options.tool], 'commands'),
+        path.join(installPath[options.tool], 'skills'),
+        path.join(installPath[options.tool], 'hooks')
+      ];
+
+      for (const dir of dirsToRemove) {
+        try {
+          await fs.rm(dir, { recursive: true, force: true });
+          this.logger.debug(`Removed: ${dir}`);
+        } catch (error) {
+          this.logger.debug(`Could not remove ${dir}: ${error.message}`);
+        }
+      }
+
+      // Remove runtime directory if mesh
+      if (installPath.mesh) {
+        try {
+          await fs.rm(installPath.mesh, { recursive: true, force: true });
+          this.logger.debug(`Removed runtime: ${installPath.mesh}`);
+        } catch (error) {
+          this.logger.debug(`Could not remove runtime: ${error.message}`);
+        }
+      }
+
+      this.logger.success('✅ Uninstall completed successfully!');
+      this.logger.info('💡 Restart Claude Code to apply changes');
+
+    } catch (error) {
+      this.logger.error(`❌ Uninstall failed: ${error.message}`);
+      if (process.env.DEBUG) {
+        this.logger.error(error.stack);
+      }
+      process.exit(1);
+    }
   }
 
   showHelp() {
@@ -623,11 +822,12 @@ USAGE:
   ai-mesh [COMMAND] [OPTIONS]
 
 COMMANDS:
-  install     Install Claude configuration (default)
-  update      Update existing installation
-  validate    Validate current installation
-  uninstall   Remove Claude configuration
-  help        Show this help message
+  install       Install Claude configuration (default)
+  update        Update existing installation
+  validate      Validate current installation
+  uninstall     Remove Claude configuration
+  trd-workflow  TRD workflow enhancement tools (see: ai-mesh trd-workflow --help)
+  help          Show this help message
 
 INSTALL OPTIONS:
   --tool, -t TOOL     Target tool: 'claude' or 'opencode' (will prompt if not specified)
@@ -647,6 +847,16 @@ EXAMPLES:
   ai-mesh install --dry-run --debug              # Detailed dry-run simulation
   ai-mesh validate
   ai-mesh update
+  ai-mesh trd-workflow inject --input tasks.json --output enhanced.json
+
+TRD WORKFLOW TOOLS:
+  The trd-workflow subcommand provides CLI access to TRD workflow enhancement:
+    • inject      - Inject checkpoint tasks into task breakdown
+    • workflow    - Generate complete workflow section for TRD
+    • complexity  - Analyze task complexity and checkpoint strategy
+    • validate    - Validate TRD structure and content
+
+  For detailed help: ai-mesh trd-workflow --help
 
 DRY-RUN MODE:
   Use --dry-run to preview what changes will be made without actually applying them.

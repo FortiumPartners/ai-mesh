@@ -1,0 +1,37 @@
+{{!--
+  Commit Message Template - Handlebars Format
+
+  Variables:
+  - commit_type: Type of commit (feat, fix, docs, etc.)
+  - commit_scope: Optional scope of the commit
+  - commit_subject: Brief description of changes
+  - commit_body: Detailed explanation (optional)
+  - completed_tasks: Array of task objects with id and description
+  - trd_id: TRD identifier (e.g., TRD-WORKFLOW-001)
+  - sprint_number: Sprint number (optional)
+  - phase_number: Phase number (optional)
+  - breaking_change: Boolean indicating breaking change
+  - breaking_description: Description of breaking change (if applicable)
+
+  Usage:
+  This template follows Conventional Commits specification with TRD integration.
+--}}
+{{commit_type}}{{#if commit_scope}}({{commit_scope}}){{/if}}: {{commit_subject}}
+{{#if commit_body}}
+
+{{commit_body}}
+{{/if}}
+{{#if completed_tasks}}
+
+{{#each completed_tasks}}
+- {{this.description}} ({{this.id}})
+{{/each}}
+{{/if}}
+{{#if trd_id}}
+
+Related: {{trd_id}}{{#if sprint_number}}, Sprint {{sprint_number}}{{/if}}{{#if phase_number}}, Phase {{phase_number}}{{/if}}
+{{/if}}
+{{#if breaking_change}}
+
+BREAKING CHANGE: {{breaking_description}}
+{{/if}}

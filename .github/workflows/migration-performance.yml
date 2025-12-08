@@ -1,6 +1,7 @@
 # Migration Performance Testing Pipeline
 # Validates command migration performance against <100ms requirement
-# Runs on: PR to main, manual trigger, scheduled daily
+# Runs on: PR to main, manual trigger
+# NOTE: Scheduled runs disabled until performance tests are implemented
 
 name: Migration Performance Tests
 
@@ -22,9 +23,10 @@ on:
         description: 'Test scale (standard, high-load, stress)'
         required: false
         default: 'standard'
-  schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
+  # TODO: Re-enable when performance tests are implemented
+  # schedule:
+  #   # Run daily at 2 AM UTC
+  #   - cron: '0 2 * * *'
 
 env:
   NODE_ENV: test

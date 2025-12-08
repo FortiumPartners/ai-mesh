@@ -16,12 +16,13 @@
 ✅ **Helm & Kubernetes Skills** - Multi-signal detection (95%+ accuracy) with sub-10ms performance ✨ **NEW (v3.3.0)**
 ✅ **Fly.io Infrastructure Integration** - Multi-signal detection (95.45% accuracy, sub-11ms performance) ✨ **NEW (v3.4.0)**
 ✅ **Command Directory Reorganization** - Hierarchical structure with 500x faster migration (10ms vs 5s target) ✨ **NEW (v3.5.0 - Sprint 2)**
+✅ **Real-Time Pane Viewer Plugin** - Visual subagent monitoring with tool display and manual close control ✨ **NEW (v0.1.0)**
 
 ### Project Context (Priority: HIGH)
 
 - **Project Type**: Claude Code Configuration Toolkit (Production-Ready)
 - **Primary Goal**: 30% productivity increase through AI-augmented development workflows ✅ **ACHIEVED**
-- **Current Status**: 130+ markdown files, skills-based agent architecture (26 agents, reduced from 29), complete TRD implementation system, Helm & Kubernetes skills with automatic detection, Node.js hooks migration complete
+- **Current Status**: 130+ markdown files, skills-based agent architecture (26 agents, reduced from 29), complete TRD implementation system, Helm & Kubernetes skills with automatic detection, Node.js hooks migration complete, real-time pane viewer plugin operational
 - **Key Users**: Fortium Partners, development teams, technical leads, infrastructure engineers
 - **Success Metrics**: Development speed +30% ✅, error reduction -50% ✅, automation coverage 80% ✅, hook performance 87-99% faster than requirements, Helm/K8s detection 95%+ accuracy ✅
 
@@ -91,6 +92,16 @@ claude-config/
 │   ├── playwright-tester.yaml      # E2E testing with Playwright MCP
 │   ├── documentation-specialist.yaml # PRD/TRD/API documentation
 │   └── README.md                   # Complete agent ecosystem index with delegation patterns
+├── plugins/                   # Claude Code plugins ✨ **NEW (v0.1.0)**
+│   └── ai-mesh-pane-viewer/   # Real-time subagent monitoring in terminal panes
+│       ├── hooks/             # PreToolUse/PostToolUse hook implementations
+│       │   ├── agent-monitor.sh   # Terminal pane monitor script with tool display
+│       │   ├── pane-spawner.js    # PreToolUse hook (creates monitoring pane)
+│       │   ├── pane-completion.js # PostToolUse hook (signals completion)
+│       │   └── pane-manager.js    # Pane lifecycle management
+│       ├── lib/               # Reusable components
+│       │   └── adapters/      # Terminal multiplexer adapters (WezTerm, Zellij, tmux)
+│       └── package.json       # Plugin configuration and dependencies
 ├── skills/                    # Dynamic skill loading system ✨ **NEW (v3.1.0+)**
 │   ├── helm/                  # Helm chart development skills ✨ **NEW (v3.3.0)**
 │   │   ├── SKILL.md          # Quick reference (22KB, <100ms load)
@@ -657,6 +668,17 @@ ls ~/.claude/agents/
 - **Complete Test Coverage**: 87%+ coverage across CommandMigrator, BackupManager, YamlRewriter
 - **Zero Breaking Changes**: All existing command invocations work unchanged
 - **Feature Parity**: Both NPM and bash installers support migration seamlessly
+
+### 🖥️ **AI-Mesh Pane Viewer Plugin (v0.1.0)** ✨ **NEW**
+
+- **Real-Time Monitoring**: Visual subagent activity in split terminal panes (WezTerm, Zellij, tmux)
+- **Tool Display**: Shows tool invocations (Read, Write, Edit, Bash, etc.) with 15-line output preview
+- **Manual Close Control**: User-controlled pane closing with "Press any key to close..." prompt
+- **Multi-Adapter Support**: Automatic detection of WezTerm, Zellij, or tmux environments
+- **File-Based Signaling**: Lightweight communication between hooks and monitor process
+- **Transcript Watching**: Real-time tailing of agent-*.jsonl files for tool extraction
+- **Status Tracking**: Displays running/completed/failed states with execution duration
+- **Zero Impact**: Fails silently if terminal multiplexer not available
 
 ### 🏗️ **Infrastructure Management Subagent Complete**
 - **Expert AWS/Kubernetes/Docker Automation**: Complete infrastructure management with security-first approach

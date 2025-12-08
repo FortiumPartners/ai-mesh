@@ -1,0 +1,412 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fortium.dev/schemas/trd-workflow/task-type-patterns/v1",
+  "version": "1.0.0",
+  "description": "Task type detection pattern library for TRD workflow generation",
+  "created": "2025-12-02",
+  "related": "TRD-WORKFLOW-001, TASK-006",
+
+  "types": {
+    "infrastructure": {
+      "description": "Cloud infrastructure, container orchestration, deployment automation",
+      "weight": 1.0,
+      "keywords": [
+        "AWS", "Azure", "GCP", "Google Cloud", "DigitalOcean", "Heroku", "Fly.io", "Vercel", "Netlify",
+        "Docker", "container", "Kubernetes", "K8s", "pod", "deployment", "service", "ingress", "namespace",
+        "Helm", "chart", "Terraform", "CloudFormation", "Pulumi", "Ansible", "Chef", "Puppet",
+        "infrastructure-as-code", "IaC", "provision", "cluster", "orchestration",
+        "scaling", "autoscaling", "load-balancer", "load balancer", "CDN", "VPC", "subnet",
+        "EC2", "ECS", "EKS", "Lambda", "S3", "RDS", "DynamoDB", "CloudFront",
+        "CI/CD", "pipeline", "Jenkins", "GitLab CI", "GitHub Actions", "CircleCI", "Travis",
+        "deploy", "deployment", "rollout", "rollback", "blue-green", "canary"
+      ],
+      "patterns": [
+        "/(deploy|provision|configure).*infrastructure/i",
+        "/set up.*(cluster|container|orchestration)/i",
+        "/(kubernetes|k8s|docker).*environment/i",
+        "/infrastructure.*automation/i",
+        "/(helm|terraform).*chart|template|module/i",
+        "/cloud.*(deployment|infrastructure|setup)/i",
+        "/(AWS|Azure|GCP).*(resource|service|configuration)/i",
+        "/container.*orchestration/i",
+        "/CI\\/CD.*pipeline/i",
+        "/automated.*deployment/i"
+      ],
+      "context_words": [
+        "cloud", "devops", "platform", "production", "staging", "environment",
+        "server", "instance", "region", "availability", "scalability"
+      ],
+      "exclusions": []
+    },
+
+    "security": {
+      "description": "Authentication, authorization, encryption, vulnerability scanning",
+      "weight": 1.0,
+      "keywords": [
+        "auth", "authentication", "authorize", "authorization",
+        "OAuth", "OAuth2", "OpenID", "OIDC", "SAML", "SSO", "single sign-on",
+        "JWT", "token", "bearer", "session", "cookie", "credential",
+        "password", "hash", "salt", "bcrypt", "argon2",
+        "encrypt", "encryption", "decrypt", "decryption", "cipher",
+        "SSL", "TLS", "HTTPS", "certificate", "cert", "key", "private key", "public key",
+        "crypto", "cryptography", "AES", "RSA", "signing",
+        "security", "secure", "vulnerability", "CVE", "exploit",
+        "audit", "penetration test", "pen test", "OWASP", "security scan",
+        "XSS", "CSRF", "SQL injection", "injection", "sanitize", "validate",
+        "RBAC", "role-based access", "permission", "access control", "ACL",
+        "firewall", "WAF", "rate limit", "rate limiting", "throttle",
+        "2FA", "two-factor", "MFA", "multi-factor", "TOTP"
+      ],
+      "patterns": [
+        "/implement.*(auth|authentication|authorization)/i",
+        "/security.*(scan|audit|review|assessment)/i",
+        "/(encrypt|decrypt|hash).*data/i",
+        "/vulnerability.*(assessment|fix|patch|scan)/i",
+        "/access.*(control|management|permission)/i",
+        "/(OAuth|JWT|SAML).*flow/i",
+        "/RBAC.*(implementation|system)/i",
+        "/password.*(hash|encryption|reset)/i",
+        "/2FA|MFA|multi-factor/i",
+        "/security.*(hardening|compliance)/i"
+      ],
+      "context_words": [
+        "secure", "protected", "authenticated", "authorized", "validated",
+        "compliance", "GDPR", "HIPAA", "PCI-DSS", "SOC2"
+      ],
+      "exclusions": []
+    },
+
+    "frontend": {
+      "description": "UI components, client-side logic, styling, user experience",
+      "weight": 1.0,
+      "keywords": [
+        "React", "ReactJS", "Vue", "VueJS", "Angular", "Svelte", "Solid",
+        "Next.js", "Nuxt", "Gatsby", "Remix", "Astro",
+        "component", "UI", "UX", "user interface", "user experience",
+        "page", "view", "route", "routing", "navigation", "menu",
+        "form", "input", "button", "modal", "dialog", "dropdown", "select",
+        "layout", "grid", "flexbox", "responsive", "mobile-first",
+        "CSS", "Sass", "SCSS", "Less", "PostCSS",
+        "styled-components", "Emotion", "Tailwind", "Bootstrap", "Material-UI",
+        "theme", "design system", "style", "styling", "animation",
+        "Redux", "Zustand", "Recoil", "Vuex", "Pinia", "MobX", "state management",
+        "hook", "useState", "useEffect", "context", "provider",
+        "DOM", "browser", "window", "document", "localStorage", "sessionStorage",
+        "fetch", "axios", "WebSocket", "EventSource", "SSE",
+        "ServiceWorker", "PWA", "progressive web app", "offline"
+      ],
+      "patterns": [
+        "/(create|build|implement).*(component|UI|interface|page)/i",
+        "/(react|vue|angular).*(component|hook|directive)/i",
+        "/user.*(interface|experience|flow)/i",
+        "/(style|design|layout).*(page|component)/i",
+        "/frontend.*(logic|validation|routing)/i",
+        "/client-side.*(rendering|logic)/i",
+        "/responsive.*(design|layout)/i",
+        "/state.*management/i",
+        "/(form|input).*validation/i",
+        "/UI\\/UX.*(design|implementation)/i"
+      ],
+      "context_words": [
+        "client", "browser", "web", "mobile", "desktop", "responsive",
+        "interactive", "visual", "click", "user", "visitor"
+      ],
+      "exclusions": [
+        "backend", "server-side", "database", "API endpoint"
+      ]
+    },
+
+    "backend": {
+      "description": "Server-side logic, APIs, database operations, business logic",
+      "weight": 1.0,
+      "keywords": [
+        "API", "REST", "RESTful", "GraphQL", "gRPC", "WebSocket",
+        "endpoint", "route", "controller", "service", "handler", "middleware",
+        "request", "response", "HTTP", "status code", "header",
+        "Express", "Koa", "Fastify", "NestJS", "Hono",
+        "Django", "Flask", "FastAPI", "Rails", "Phoenix", "Elixir",
+        "Spring", "Spring Boot", "ASP.NET", "Laravel", "Symfony",
+        "database", "DB", "SQL", "NoSQL", "query", "transaction",
+        "PostgreSQL", "Postgres", "MySQL", "MariaDB", "SQLite",
+        "MongoDB", "Mongoose", "Redis", "Cassandra", "DynamoDB",
+        "ORM", "Prisma", "Sequelize", "TypeORM", "ActiveRecord", "Ecto",
+        "migration", "schema", "model", "table", "collection", "document",
+        "CRUD", "create", "read", "update", "delete", "query",
+        "server", "backend", "server-side", "microservice", "monolith",
+        "webhook", "cron", "job", "queue", "worker", "background job",
+        "RabbitMQ", "Kafka", "SQS", "Bull", "Sidekiq",
+        "cache", "caching", "Redis", "Memcached", "CDN",
+        "session", "cookie", "rate limit", "pagination", "cursor"
+      ],
+      "patterns": [
+        "/(create|implement|build).*(API|endpoint|route)/i",
+        "/(database|SQL|query).*(design|optimization|migration)/i",
+        "/backend.*(logic|service|controller)/i",
+        "/(REST|GraphQL|gRPC).*(API|endpoint)/i",
+        "/server-side.*(logic|validation|processing)/i",
+        "/microservice.*(architecture|implementation)/i",
+        "/business.*(logic|rule)/i",
+        "/(webhook|cron|job).*implementation/i",
+        "/database.*(schema|migration|query)/i",
+        "/API.*(design|implementation|documentation)/i"
+      ],
+      "context_words": [
+        "server", "backend", "database", "persistence", "storage",
+        "transaction", "business logic", "data processing"
+      ],
+      "exclusions": [
+        "frontend", "UI", "component", "client-side"
+      ]
+    },
+
+    "testing": {
+      "description": "Unit tests, integration tests, E2E tests, test infrastructure",
+      "weight": 1.0,
+      "keywords": [
+        "test", "testing", "spec", "suite",
+        "unit test", "unit-test", "unit testing",
+        "integration test", "integration-test", "integration testing",
+        "e2e", "E2E", "end-to-end", "end to end",
+        "acceptance test", "acceptance-test", "UAT",
+        "regression", "regression test", "smoke test", "smoke-test",
+        "Jest", "Vitest", "Mocha", "Jasmine", "AVA",
+        "Cypress", "Playwright", "Selenium", "TestCafe", "Puppeteer",
+        "Testing Library", "Enzyme", "Supertest",
+        "coverage", "test coverage", "code coverage", "branch coverage",
+        "mock", "stub", "spy", "fake", "double",
+        "fixture", "factory", "snapshot", "snapshot test",
+        "assertion", "expect", "assert", "should", "chai",
+        "describe", "it", "test case", "test scenario",
+        "beforeEach", "afterEach", "beforeAll", "afterAll",
+        "setup", "teardown", "cleanup",
+        "TDD", "test-driven", "BDD", "behavior-driven",
+        "QA", "quality assurance", "quality gate"
+      ],
+      "patterns": [
+        "/write.*(test|spec|test suite)/i",
+        "/(unit|integration|e2e).*(test|testing|coverage)/i",
+        "/test.*(coverage|automation|framework|infrastructure)/i",
+        "/(mock|stub|fixture).*data/i",
+        "/automated.*(testing|test suite)/i",
+        "/test-driven.*development/i",
+        "/quality.*(assurance|gate)/i",
+        "/achieve.*coverage/i",
+        "/test.*(scenario|case|suite)/i",
+        "/(Jest|Cypress|Playwright).*(test|suite)/i"
+      ],
+      "context_words": [
+        "verify", "validate", "assert", "check", "ensure",
+        "quality", "reliability", "correctness", "behavior"
+      ],
+      "exclusions": []
+    },
+
+    "documentation": {
+      "description": "Technical documentation, API docs, README files, comments",
+      "weight": 0.9,
+      "keywords": [
+        "documentation", "docs", "document",
+        "README", "CHANGELOG", "CONTRIBUTING", "LICENSE",
+        "guide", "tutorial", "walkthrough", "how-to", "howto",
+        "example", "sample", "demo", "showcase",
+        "API docs", "API documentation", "API reference",
+        "JSDoc", "TSDoc", "Javadoc", "docstring", "godoc",
+        "Swagger", "OpenAPI", "API spec", "specification",
+        "Markdown", "MDX", "reStructuredText", "AsciiDoc",
+        "Docusaurus", "VuePress", "Sphinx", "GitBook", "MkDocs",
+        "comment", "inline comment", "block comment",
+        "annotation", "inline docs", "code comment",
+        "architecture diagram", "flowchart", "diagram", "visualization",
+        "ADR", "architecture decision record", "RFC", "design doc",
+        "technical spec", "specification", "requirements",
+        "wiki", "knowledge base", "runbook", "playbook"
+      ],
+      "patterns": [
+        "/(write|create|update).*(documentation|docs|README)/i",
+        "/document.*(API|architecture|design|code)/i",
+        "/(generate|maintain).*(API docs|changelog|documentation)/i",
+        "/add.*(comments|docstrings|annotations)/i",
+        "/(architecture|design).*(diagram|document)/i",
+        "/technical.*(specification|documentation)/i",
+        "/(README|CHANGELOG|guide).*update/i",
+        "/inline.*(documentation|comments)/i",
+        "/API.*(documentation|reference)/i",
+        "/knowledge.*(base|documentation)/i"
+      ],
+      "context_words": [
+        "explain", "describe", "clarify", "document", "record",
+        "reference", "guide", "instruction", "manual"
+      ],
+      "exclusions": []
+    },
+
+    "general": {
+      "description": "General tasks that don't fit specific categories",
+      "weight": 0.5,
+      "keywords": [
+        "setup", "configure", "initialize", "install",
+        "update", "upgrade", "migrate", "refactor",
+        "optimize", "improve", "enhance", "fix",
+        "investigate", "research", "analyze", "review",
+        "meeting", "planning", "discussion", "sync"
+      ],
+      "patterns": [
+        "/(setup|configure|initialize).*project/i",
+        "/(refactor|optimize|improve).*(code|system)/i",
+        "/(investigate|research|analyze)/i",
+        "/(meeting|planning|discussion)/i"
+      ],
+      "context_words": [],
+      "exclusions": []
+    }
+  },
+
+  "composite_patterns": {
+    "description": "Patterns that indicate multiple task types",
+    "patterns": [
+      {
+        "name": "fullstack",
+        "pattern": "/(frontend|UI).*(backend|API)/i",
+        "types": ["frontend", "backend"],
+        "description": "Tasks involving both frontend and backend work"
+      },
+      {
+        "name": "secure-api",
+        "pattern": "/(API|endpoint).*(auth|security|permission)/i",
+        "types": ["backend", "security"],
+        "description": "API development with security requirements"
+      },
+      {
+        "name": "infra-security",
+        "pattern": "/(infrastructure|deployment).*(security|SSL|certificate)/i",
+        "types": ["infrastructure", "security"],
+        "description": "Infrastructure work with security focus"
+      },
+      {
+        "name": "tested-feature",
+        "pattern": "/(implement|create).*(test|testing)/i",
+        "types": ["backend", "testing"],
+        "description": "Feature implementation with testing requirements"
+      },
+      {
+        "name": "documented-api",
+        "pattern": "/API.*(documentation|docs|OpenAPI)/i",
+        "types": ["backend", "documentation"],
+        "description": "API development with documentation requirements"
+      }
+    ]
+  },
+
+  "exclusion_patterns": {
+    "description": "Patterns that reduce confidence for specific types",
+    "patterns": [
+      {
+        "type": "frontend",
+        "patterns": [
+          "/backend.*only/i",
+          "/server-side.*only/i",
+          "/no.*UI/i"
+        ],
+        "penalty": 0.5
+      },
+      {
+        "type": "backend",
+        "patterns": [
+          "/frontend.*only/i",
+          "/client-side.*only/i",
+          "/UI.*only/i"
+        ],
+        "penalty": 0.5
+      },
+      {
+        "type": "testing",
+        "patterns": [
+          "/no.*test/i",
+          "/skip.*test/i",
+          "/without.*test/i"
+        ],
+        "penalty": 0.3
+      }
+    ]
+  },
+
+  "abbreviations": {
+    "description": "Common abbreviations to expand during text normalization",
+    "mappings": {
+      "k8s": "kubernetes",
+      "db": "database",
+      "auth": "authentication",
+      "api": "application programming interface",
+      "ui": "user interface",
+      "ux": "user experience",
+      "e2e": "end-to-end",
+      "ci": "continuous integration",
+      "cd": "continuous deployment",
+      "cicd": "continuous integration continuous deployment",
+      "tdd": "test-driven development",
+      "bdd": "behavior-driven development",
+      "orm": "object relational mapping",
+      "crud": "create read update delete",
+      "sql": "structured query language",
+      "nosql": "not only structured query language",
+      "rest": "representational state transfer",
+      "graphql": "graph query language",
+      "grpc": "google remote procedure call",
+      "http": "hypertext transfer protocol",
+      "https": "hypertext transfer protocol secure",
+      "ssl": "secure sockets layer",
+      "tls": "transport layer security",
+      "jwt": "json web token",
+      "oauth": "open authorization",
+      "saml": "security assertion markup language",
+      "sso": "single sign-on",
+      "rbac": "role-based access control",
+      "acl": "access control list",
+      "2fa": "two-factor authentication",
+      "mfa": "multi-factor authentication",
+      "aws": "amazon web services",
+      "gcp": "google cloud platform",
+      "cdn": "content delivery network",
+      "vpc": "virtual private cloud",
+      "ecs": "elastic container service",
+      "eks": "elastic kubernetes service",
+      "ec2": "elastic compute cloud",
+      "s3": "simple storage service",
+      "rds": "relational database service",
+      "pwa": "progressive web app",
+      "spa": "single page application",
+      "ssr": "server-side rendering",
+      "csr": "client-side rendering",
+      "ssg": "static site generation"
+    }
+  },
+
+  "stopwords": [
+    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
+    "be", "have", "has", "had", "do", "does", "did", "will", "would",
+    "should", "could", "may", "might", "must", "can", "this", "that",
+    "these", "those", "it", "its", "which", "who", "when", "where",
+    "why", "how", "all", "each", "every", "both", "few", "more", "most",
+    "other", "some", "such", "no", "nor", "not", "only", "own", "same",
+    "so", "than", "too", "very"
+  ],
+
+  "thresholds": {
+    "description": "Default confidence thresholds",
+    "primary_type": 0.4,
+    "secondary_type": 0.3,
+    "multi_type_gap": 0.15,
+    "ambiguity_high": 0.6,
+    "ambiguity_medium": 0.3
+  },
+
+  "metadata": {
+    "author": "Fortium Software Configuration Team",
+    "created": "2025-12-02",
+    "lastUpdated": "2025-12-02",
+    "version": "1.0.0",
+    "compatibleWith": "TRD-WORKFLOW-001",
+    "tags": ["task-detection", "classification", "patterns", "nlp"]
+  }
+}

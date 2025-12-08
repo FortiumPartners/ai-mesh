@@ -1,0 +1,259 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Mesh Plugin Registry",
+  "description": "Schema for the AI Mesh plugin marketplace registry",
+  "type": "object",
+  "required": ["version", "lastUpdated", "plugins", "categories"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Registry version following semantic versioning"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last registry update"
+    },
+    "plugins": {
+      "type": "array",
+      "description": "Array of registered plugins",
+      "items": {
+        "type": "object",
+        "required": ["name", "displayName", "description", "version", "author", "repository", "category"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^ai-mesh-[a-z0-9-]+$",
+            "description": "Plugin package name (must start with 'ai-mesh-')"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Human-readable plugin name"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 200,
+            "description": "Brief plugin description"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+",
+            "description": "Current stable version (semantic versioning)"
+          },
+          "author": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Author or organization name"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "description": "Contact email address"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Author website or profile URL"
+              }
+            }
+          },
+          "repository": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "description": "Source code repository URL"
+          },
+          "npm": {
+            "type": "string",
+            "pattern": "^@?[a-z0-9-~][a-z0-9-._~]*/[a-z0-9-~][a-z0-9-._~]*$|^[a-z0-9-~][a-z0-9-._~]*$",
+            "description": "NPM package name (if published to npm)"
+          },
+          "category": {
+            "type": "string",
+            "enum": ["core", "monitoring", "workflow", "frameworks", "testing", "infrastructure"],
+            "description": "Primary plugin category"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "description": "Search tags for plugin discovery"
+          },
+          "tier": {
+            "type": "string",
+            "enum": ["foundation", "workflow", "framework", "testing"],
+            "description": "Plugin tier classification"
+          },
+          "dependencies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[><=^~]*\\d+\\.\\d+\\.\\d+"
+            },
+            "description": "Required dependencies with version constraints"
+          },
+          "peerDependencies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Peer dependencies (optional but recommended)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["stable", "preview", "deprecated"],
+            "description": "Plugin development status"
+          },
+          "featured": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show in featured plugins section"
+          },
+          "installCommand": {
+            "type": "string",
+            "description": "Recommended installation command"
+          },
+          "documentation": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to plugin documentation"
+          },
+          "license": {
+            "type": "string",
+            "description": "SPDX license identifier"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional keywords for search"
+          },
+          "screenshots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "URLs to plugin screenshots"
+          },
+          "minAiMeshVersion": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Minimum ai-mesh version required"
+          },
+          "maxAiMeshVersion": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Maximum ai-mesh version supported"
+          }
+        }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Available plugin categories",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z]+$",
+            "description": "Category identifier (lowercase)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Category display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Category description"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Category icon (emoji or icon identifier)"
+          }
+        }
+      }
+    },
+    "tiers": {
+      "type": "array",
+      "description": "Plugin tier definitions",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z]+$",
+            "description": "Tier identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Tier display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Tier description"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Tier priority (1 = highest)"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Registry metadata and statistics",
+      "properties": {
+        "totalPlugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of plugins"
+        },
+        "activePlugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active (non-deprecated) plugins"
+        },
+        "deprecatedPlugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of deprecated plugins"
+        },
+        "featuredPlugins": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of featured plugins"
+        },
+        "averageRating": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Average plugin rating (0-5)"
+        },
+        "totalDownloads": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total download count across all plugins"
+        }
+      }
+    }
+  }
+}
