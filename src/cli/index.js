@@ -12,6 +12,7 @@ const { SkillInstaller } = require('../installer/skill-installer.js');
 const { RuntimeSetup } = require('../installer/runtime-setup.js');
 const { SettingsManager } = require('../installer/settings-manager.js');
 const { MCPServerInstaller } = require('../installer/mcp-server-installer.js');
+const { PluginInstaller } = require('../installer/plugin-installer.js');
 const { Logger } = require('../utils/logger.js');
 const { Validator } = require('../utils/validator.js');
 
@@ -123,6 +124,7 @@ class ClaudeInstaller {
         'Installing commands',
         'Migrating commands to subdirectories',
         'Installing skills',
+        'Installing plugins',
         'Installing MCP servers',
         'Configuring settings',
         'Validating installation'
@@ -205,8 +207,28 @@ class ClaudeInstaller {
         await skillInstaller.install(options.tool);
       }
 
-      // Step 6: Install MCP servers
+      // Step 6: Install plugins
       updateProgress(steps[5]);
+      let pluginResult = null;
+      if (options.dryRun) {
+        const fs = require('fs');
+        const pluginDirs = fs.readdirSync(path.join(__dirname, '../../plugins'), { withFileTypes: true })
+          .filter(d => d.isDirectory());
+        this.logger.info(`[DRY RUN] Would install ${pluginDirs.length} plugins`);
+      } else if (options.tool === 'claude') {
+        try {
+          const pluginInstaller = new PluginInstaller(installPath, this.logger, options);
+          pluginResult = await pluginInstaller.install(options.tool);
+        } catch (error) {
+          this.logger.warning(`⚠️  Plugin installation failed (non-critical): ${error.message}`);
+          pluginResult = { installed: 0, skipped: 0, plugins: [] };
+        }
+      } else {
+        this.logger.info(`Skipping plugin installation for ${options.tool}`);
+      }
+
+      // Step 7: Install MCP servers
+      updateProgress(steps[6]);
       let mcpResult = null;
       if (options.dryRun) {
         this.logger.info('[DRY RUN] Would install TRD Workflow MCP server');
@@ -223,8 +245,8 @@ class ClaudeInstaller {
         this.logger.info(`Skipping MCP server installation for ${options.tool}`);
       }
 
-      // Step 7: Configure settings
-      updateProgress(steps[6]);
+      // Step 8: Configure settings
+      updateProgress(steps[7]);
       if (options.dryRun) {
         if (options.tool === 'claude') {
           this.logger.info('[DRY RUN] Would configure Claude Code settings');
@@ -238,8 +260,8 @@ class ClaudeInstaller {
         this.logger.info(`Skipping settings configuration for ${options.tool}`);
       }
 
-      // Step 8: Validate installation
-      updateProgress(steps[7]);
+      // Step 9: Validate installation
+      updateProgress(steps[8]);
       if (options.dryRun) {
         this.logger.info('[DRY RUN] Would validate installation integrity');
         this.showDryRunSummary(installPath, options.tool, scope);
@@ -248,7 +270,7 @@ class ClaudeInstaller {
 
         if (validation.success) {
           this.logger.success('✅ Installation completed successfully!');
-          this.showInstallationSummary(validation.summary, installPath, options.tool, mcpResult);
+          this.showInstallationSummary(validation.summary, installPath, options.tool, mcpResult, pluginResult);
         } else {
           this.logger.error('❌ Installation validation failed');
           this.logger.error(validation.errors.join('\\n'));
@@ -379,7 +401,7 @@ class ClaudeInstaller {
     }
   }
 
-  showInstallationSummary(summary, installPath, tool, mcpResult) {
+  showInstallationSummary(summary, installPath, tool, mcpResult, pluginResult) {
     console.log('\n' + '='.repeat(60));
     console.log('🎉 INSTALLATION COMPLETE!');
     console.log('='.repeat(60));
@@ -388,6 +410,15 @@ class ClaudeInstaller {
     console.log('');
     console.log(`✅ Agents installed: ${summary.agents}`);
     console.log(`✅ Commands installed: ${summary.commands}`);
+
+    // Show plugin status if applicable
+    if (pluginResult && tool === 'claude') {
+      if (pluginResult.installed > 0) {
+        console.log(`✅ Plugins installed: ${pluginResult.installed} (${pluginResult.plugins.join(', ')})`);
+      } else {
+        console.log(`⚠️  Plugins: ${pluginResult.skipped} skipped`);
+      }
+    }
 
     // Show MCP server status if applicable
     if (mcpResult && tool === 'claude') {
