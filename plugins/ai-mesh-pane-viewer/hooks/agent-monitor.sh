@@ -1,13 +1,25 @@
 #!/bin/bash
 
 # Agent monitor - displays real-time subagent activity in a terminal pane
-# Usage: agent-monitor.sh <agent-type> <description> <signal-file> <transcript-dir>
+# Usage: agent-monitor.sh <agent-type> <description> <signal-file> <transcript-dir> [task-id]
 
 AGENT_TYPE="${1:-unknown}"
 DESCRIPTION="${2:-No description}"
 SIGNAL_FILE="${3:-/tmp/agent-signal-$$}"
 TRANSCRIPT_DIR="${4:-}"
+TASK_ID="${5:-$(date +%s)}"
 START_TIME=$(date +%s)
+START_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+# Log configuration
+LOG_ENABLED="${AI_MESH_PANE_LOG:-true}"
+LOG_BASE_DIR="${HOME}/.ai-mesh/agent-logs"
+LOG_DATE=$(date '+%Y-%m-%d')
+LOG_TIME=$(date '+%H%M%S')
+LOG_DIR="${LOG_BASE_DIR}/${LOG_DATE}"
+LOG_FILE="${LOG_DIR}/${AGENT_TYPE}_${LOG_TIME}_${TASK_ID:0:12}.log"
+LOG_RETENTION_DAYS=7
+LOG_MAX_SIZE_MB=10
 
 # Colors
 CYAN='\033[0;36m'
@@ -17,6 +29,57 @@ YELLOW='\033[33m'
 DIM='\033[2m'
 BOLD='\033[1m'
 RESET='\033[0m'
+
+# Logging functions
+init_logging() {
+    if [ "$LOG_ENABLED" != "true" ]; then
+        return
+    fi
+
+    # Create log directory
+    mkdir -p "$LOG_DIR" 2>/dev/null
+
+    # Write log header
+    cat > "$LOG_FILE" << EOF
+================================================================================
+AI-Mesh Agent Log
+================================================================================
+Agent Type:  ${AGENT_TYPE}
+Task:        ${DESCRIPTION}
+Started:     ${START_TIMESTAMP}
+Task ID:     ${TASK_ID}
+Log File:    ${LOG_FILE}
+================================================================================
+
+EOF
+
+    # Set restrictive permissions
+    chmod 600 "$LOG_FILE" 2>/dev/null
+}
+
+log_entry() {
+    if [ "$LOG_ENABLED" != "true" ] || [ ! -f "$LOG_FILE" ]; then
+        return
+    fi
+    local timestamp=$(date '+%H:%M:%S')
+    echo "[$timestamp] $1" >> "$LOG_FILE"
+}
+
+cleanup_old_logs() {
+    if [ "$LOG_ENABLED" != "true" ]; then
+        return
+    fi
+
+    # Remove logs older than retention period
+    find "$LOG_BASE_DIR" -type f -name "*.log" -mtime +${LOG_RETENTION_DAYS} -delete 2>/dev/null
+
+    # Remove empty date directories
+    find "$LOG_BASE_DIR" -type d -empty -delete 2>/dev/null
+}
+
+# Initialize logging
+init_logging
+cleanup_old_logs
 
 # Track existing agent files before we start
 EXISTING_FILES=$(mktemp)
@@ -106,12 +169,16 @@ except:
     pass
 " 2>/dev/null)
 
-        # Display with appropriate formatting
+        # Display with appropriate formatting and log
         echo "$OUTPUT" | while IFS= read -r out_line; do
             if [[ "$out_line" == TOOL:* ]]; then
-                echo -e "  ${DIM}→${RESET} ${YELLOW}${out_line#TOOL:}${RESET}"
+                local tool_text="${out_line#TOOL:}"
+                echo -e "  ${DIM}→${RESET} ${YELLOW}${tool_text}${RESET}"
+                log_entry "TOOL: ${tool_text}"
             elif [[ "$out_line" == OUT:* ]]; then
-                echo -e "    ${DIM}${out_line#OUT:}${RESET}"
+                local out_text="${out_line#OUT:}"
+                echo -e "    ${DIM}${out_text}${RESET}"
+                log_entry "  ${out_text}"
             fi
         done
     done
@@ -178,8 +245,24 @@ if [[ "$SIGNAL" == error:* ]]; then
     ERROR_MSG="${SIGNAL#error:}"
     echo -e "  ${DIM}Status:${RESET} ${RED}✗ Failed${RESET} ${DIM}(${DURATION_STR})${RESET}"
     echo -e "  ${DIM}Error:${RESET} ${ERROR_MSG}"
+    log_entry "STATUS: Failed (${DURATION_STR})"
+    log_entry "ERROR: ${ERROR_MSG}"
 else
     echo -e "  ${DIM}Status:${RESET} ${GREEN}✓ Completed${RESET} ${DIM}(${DURATION_STR})${RESET}"
+    log_entry "STATUS: Completed (${DURATION_STR})"
+fi
+
+# Log footer
+if [ "$LOG_ENABLED" = "true" ] && [ -f "$LOG_FILE" ]; then
+    cat >> "$LOG_FILE" << EOF
+
+================================================================================
+End of Log
+Duration: ${DURATION_STR}
+Ended:    $(date '+%Y-%m-%d %H:%M:%S')
+================================================================================
+EOF
+    echo -e "  ${DIM}Log:${RESET} ${LOG_FILE}"
 fi
 
 echo ""

@@ -98,7 +98,8 @@ class PaneManager {
 
     // Spawn new pane with agent-monitor script
     const monitorPath = path.join(__dirname, 'agent-monitor.sh');
-    const command = [monitorPath, agentType, description, signalFile, transcriptDir];
+    const shortTaskId = taskId ? taskId.substring(0, 12) : Date.now().toString();
+    const command = [monitorPath, agentType, description, signalFile, transcriptDir, shortTaskId];
 
     const paneId = await this.adapter.splitPane({
       direction,
