@@ -2001,6 +2001,41 @@ async function validateMultiplexerSelection(multiplexer) {
 
 ---
 
+## Future Enhancements
+
+### Ghostty Terminal Support
+
+**Status**: Watching - Blocked on upstream CLI/IPC support
+
+**Background**: [Ghostty](https://github.com/ghostty-org/ghostty) is a fast, feature-rich, GPU-accelerated terminal emulator with built-in split pane support. However, as of December 2025, Ghostty does not expose a CLI or IPC interface for programmatic pane control.
+
+**Current Ghostty Capabilities**:
+- Built-in split pane support via keybindings (`new_split`, `close_surface`, `goto_split`)
+- No CLI commands for pane management
+- No environment variable for detection (unlike `WEZTERM_PANE`, `TMUX`, `ZELLIJ`)
+- No pane ID system accessible externally
+
+**Blocking Issues**:
+- No `ghostty cli split-pane` equivalent
+- No way to create splits programmatically
+- No way to send text to specific panes
+- No way to close panes by ID
+- Scripting API discussion ongoing: [GitHub #2353](https://github.com/ghostty-org/ghostty/discussions/2353)
+
+**Planned Upstream Features** (no timeline):
+- Linux: D-Bus integration planned
+- macOS: AppleScript integration considered
+- Cross-platform CLI: Under discussion but security concerns raised
+
+**Action Items**:
+- [ ] Monitor [ghostty-org/ghostty](https://github.com/ghostty-org/ghostty) for CLI/IPC announcements
+- [ ] Implement GhosttyAdapter when upstream support is available
+- [ ] Add detection via environment variable (when exposed)
+
+**Estimated Implementation**: Once Ghostty exposes CLI/IPC, implementation would follow the same adapter pattern as WezTerm/tmux/Zellij (~1-2 days).
+
+---
+
 ## Definition of Done
 
 ### Code Quality
