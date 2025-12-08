@@ -45,6 +45,16 @@ Enable or disable floating panes (Zellij only).
 - Options: `true`, `false`
 - Default: `false`
 
+### log
+Enable or disable output logging to `~/.ai-mesh/agent-logs/`.
+- Options: `true`, `false`
+- Default: `true`
+
+### enabled
+Enable or disable the pane viewer entirely.
+- Options: `true`, `false`
+- Default: `true`
+
 ## Examples
 
 **View current configuration:**
@@ -77,3 +87,13 @@ You can also configure via environment variables:
 - `AI_MESH_PANE_PERCENT` - Set percent
 - `AI_MESH_PANE_FLOATING` - Set floating (0 or 1)
 - `AI_MESH_PANE_DISABLE` - Disable pane viewer (set to 1)
+- `AI_MESH_PANE_LOG` - Enable/disable logging (true or false)
+
+## Log Files
+
+When logging is enabled, output is captured to:
+```
+~/.ai-mesh/agent-logs/YYYY-MM-DD/<agent-type>_<time>_<task-id>.log
+```
+
+Logs are automatically cleaned up after 7 days.
