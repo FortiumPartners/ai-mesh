@@ -26,7 +26,8 @@ function loadConfig() {
   return {
     enabled: true,
     direction: 'right',
-    percent: 30
+    percent: 30,
+    autoCloseTimeout: 0  // 0 = disabled (manual close)
   };
 }
 
@@ -65,7 +66,8 @@ async function main(hookData) {
       taskId,
       agentType,
       description,
-      transcriptPath
+      transcriptPath,
+      autoCloseTimeout: config.autoCloseTimeout || 0
     });
 
   } catch (error) {

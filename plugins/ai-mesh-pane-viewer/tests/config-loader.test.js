@@ -279,7 +279,8 @@ describe('config-loader', () => {
         percent: 50,
         reusePane: false,
         colors: false,
-        maxAgentHistory: 25
+        maxAgentHistory: 25,
+        autoCloseTimeout: 10
       };
 
       // Act
@@ -374,7 +375,8 @@ describe('config-loader', () => {
         percent: 40,
         reusePane: true,
         colors: true,
-        maxAgentHistory: 50
+        maxAgentHistory: 50,
+        autoCloseTimeout: 0
       });
     });
 

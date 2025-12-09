@@ -9,7 +9,8 @@ const DEFAULT_CONFIG = {
   percent: 40,
   reusePane: true,
   colors: true,
-  maxAgentHistory: 50
+  maxAgentHistory: 50,
+  autoCloseTimeout: 0  // Seconds to auto-close after completion (0 = disabled, manual close)
 };
 
 const CONFIG_DIR = path.join(os.homedir(), '.ai-mesh-pane-viewer');
