@@ -36,10 +36,7 @@
         "real-time",
         "ai-mesh"
       ],
-      "category": "monitoring",
-      "engines": {
-        "node": ">=18.0.0"
-      }
+      "category": "monitoring"
     }
   ]
 }
