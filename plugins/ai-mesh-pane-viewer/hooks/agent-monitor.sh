@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # Agent monitor - displays real-time subagent activity in a terminal pane
-# Usage: agent-monitor.sh <agent-type> <description> <signal-file> <transcript-dir> [task-id]
+# Usage: agent-monitor.sh <agent-type> <description> <signal-file> <transcript-dir> [task-id] [auto-close-timeout]
 
 AGENT_TYPE="${1:-unknown}"
 DESCRIPTION="${2:-No description}"
 SIGNAL_FILE="${3:-/tmp/agent-signal-$$}"
 TRANSCRIPT_DIR="${4:-}"
 TASK_ID="${5:-$(date +%s)}"
+AUTO_CLOSE_TIMEOUT="${6:-0}"  # 0 = disabled (manual close)
 START_TIME=$(date +%s)
 START_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -266,5 +267,27 @@ EOF
 fi
 
 echo ""
-echo -e "${DIM}Press any key to close...${RESET}"
-read -n 1 -s
+
+# Handle auto-close timeout
+if [ "$AUTO_CLOSE_TIMEOUT" -gt 0 ] 2>/dev/null; then
+    # Auto-close with countdown
+    echo -e "${DIM}Auto-closing in ${AUTO_CLOSE_TIMEOUT}s (press any key to close now)...${RESET}"
+
+    countdown=$AUTO_CLOSE_TIMEOUT
+    while [ $countdown -gt 0 ]; do
+        # Check for keypress with 1 second timeout
+        if read -t 1 -n 1 -s 2>/dev/null; then
+            break  # User pressed a key
+        fi
+        countdown=$((countdown - 1))
+        if [ $countdown -gt 0 ]; then
+            # Update countdown display (overwrite line)
+            echo -ne "\r${DIM}Auto-closing in ${countdown}s (press any key to close now)...${RESET}  "
+        fi
+    done
+    echo ""
+else
+    # Manual close (original behavior)
+    echo -e "${DIM}Press any key to close...${RESET}"
+    read -n 1 -s
+fi

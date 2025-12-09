@@ -84,7 +84,8 @@ class PaneManager {
       taskId,
       agentType = 'unknown',
       description = '',
-      transcriptPath = ''
+      transcriptPath = '',
+      autoCloseTimeout = 0  // 0 = disabled (manual close)
     } = config;
     const state = await this.loadState();
 
@@ -99,7 +100,7 @@ class PaneManager {
     // Spawn new pane with agent-monitor script
     const monitorPath = path.join(__dirname, 'agent-monitor.sh');
     const shortTaskId = taskId ? taskId.substring(0, 12) : Date.now().toString();
-    const command = [monitorPath, agentType, description, signalFile, transcriptDir, shortTaskId];
+    const command = [monitorPath, agentType, description, signalFile, transcriptDir, shortTaskId, String(autoCloseTimeout)];
 
     const paneId = await this.adapter.splitPane({
       direction,

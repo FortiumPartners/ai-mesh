@@ -1,0 +1,207 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'plugins/ai-mesh-pane-viewer/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'plugins/ai-mesh-pane-viewer/**'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: plugins/ai-mesh-pane-viewer
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: ['18', '20', '22']
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: plugins/ai-mesh-pane-viewer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20'
+        uses: codecov/codecov-action@v4
+        with:
+          files: plugins/ai-mesh-pane-viewer/coverage/lcov.info
+          flags: pane-viewer
+          name: pane-viewer-coverage
+          fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: plugins/ai-mesh-pane-viewer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  validate-plugin:
+    name: Validate Plugin Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate plugin.json
+        run: |
+          echo "Validating plugin structure..."
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+
+            // Check plugin.json exists
+            const pluginPath = '.claude-plugin/plugin.json';
+            if (!fs.existsSync(pluginPath)) {
+              throw new Error('Missing .claude-plugin/plugin.json');
+            }
+
+            const plugin = JSON.parse(fs.readFileSync(pluginPath, 'utf8'));
+
+            // Validate required fields
+            const required = ['name', 'version', 'description', 'author'];
+            for (const field of required) {
+              if (!plugin[field]) {
+                throw new Error('Missing required field: ' + field);
+              }
+            }
+
+            // Validate hooks directory
+            if (!fs.existsSync('hooks')) {
+              throw new Error('Missing hooks directory');
+            }
+
+            // Validate hooks.json
+            if (!fs.existsSync('hooks/hooks.json')) {
+              throw new Error('Missing hooks/hooks.json');
+            }
+
+            console.log('✓ Plugin structure is valid');
+            console.log('  Name:', plugin.name);
+            console.log('  Version:', plugin.version);
+          "
+
+      - name: Validate package.json
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+
+            if (!pkg.name) throw new Error('Missing package name');
+            if (!pkg.version) throw new Error('Missing package version');
+            if (!pkg.scripts || !pkg.scripts.test) throw new Error('Missing test script');
+
+            console.log('✓ package.json is valid');
+          "
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: plugins/ai-mesh-pane-viewer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Run integration tests with tmux
+        run: |
+          # Start a tmux session for integration tests
+          tmux new-session -d -s test-session
+
+          # Run integration tests (they will detect tmux is available but not in session)
+          npm test -- --testPathPattern=integration --verbose
+
+          # Kill tmux session
+          tmux kill-session -t test-session || true
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: plugins/ai-mesh-pane-viewer/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        run: |
+          echo "Checking for security issues..."
+          # Check for common security patterns in code
+          if grep -r "eval(" hooks/ lib/ --include="*.js" 2>/dev/null; then
+            echo "⚠️  Warning: eval() usage detected"
+          fi
+          if grep -r "child_process.exec(" hooks/ lib/ --include="*.js" 2>/dev/null; then
+            echo "⚠️  Warning: child_process.exec() usage detected (prefer execSync or spawn)"
+          fi
+          echo "✓ Security check complete"

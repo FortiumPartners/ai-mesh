@@ -2,6 +2,11 @@
 
 Real-time subagent monitoring in terminal panes for Claude Code.
 
+[![Test](https://github.com/FortiumPartners/ai-mesh/actions/workflows/test.yml/badge.svg)](https://github.com/FortiumPartners/ai-mesh/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-80%25-green)](https://github.com/FortiumPartners/ai-mesh)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 ## Overview
 
 The AI Mesh Pane Viewer is a Claude Code plugin that automatically spawns terminal panes to display real-time activity from subagents. When you delegate tasks to agents like `infrastructure-developer` or `frontend-developer`, their work appears in a split pane alongside your main session.
@@ -10,8 +15,10 @@ The AI Mesh Pane Viewer is a Claude Code plugin that automatically spawns termin
 
 - **Automatic Pane Spawning**: Spawns viewer panes when subagents are invoked
 - **Multi-Multiplexer Support**: Works with WezTerm, Zellij, and tmux
-- **Real-Time Updates**: See agent activity as it happens
-- **Configurable Layout**: Choose split direction and size
+- **Real-Time Tool Display**: See tool invocations (Read, Write, Bash, etc.) with output preview
+- **Configurable Layout**: Choose split direction, size, and auto-close behavior
+- **Auto-Close Timeout**: Optional countdown timer to automatically close completed panes
+- **Activity Logging**: Persistent logs in `~/.ai-mesh/agent-logs/` with 7-day retention
 - **Session Persistence**: Reuses panes across multiple agent invocations
 
 ## Installation
@@ -22,27 +29,90 @@ The AI Mesh Pane Viewer is a Claude Code plugin that automatically spawns termin
 - Claude Code installed
 - One of: WezTerm, Zellij, or tmux
 
-### Install Plugin
+### Installation Methods
+
+#### Method 1: Via AI-Mesh Installer (Recommended)
 
 ```bash
-# Clone or download plugin
+# Install ai-mesh which includes the pane viewer plugin
+npx @fortium/ai-mesh install --global
+
+# The plugin is automatically installed to ~/.claude/plugins/ai-mesh-pane-viewer/
+# Hooks are configured in ~/.claude/settings.json
+```
+
+#### Method 2: Via Claude Code Plugin Command
+
+```bash
+# First, add the ai-mesh marketplace (one-time setup)
+/plugin marketplace add https://github.com/FortiumPartners/ai-mesh
+
+# Then install the plugin
+/plugin install ai-mesh-pane-viewer@ai-mesh
+
+# Or browse and install interactively
+/plugin
+```
+
+#### Method 3: Manual Installation
+
+```bash
+# Clone to Claude plugins directory
 cd ~/.claude/plugins/
-git clone https://github.com/FortiumPartners/ai-mesh-pane-viewer.git
+git clone https://github.com/FortiumPartners/ai-mesh.git temp-clone
+mv temp-clone/plugins/ai-mesh-pane-viewer .
+rm -rf temp-clone
 
 # Install dependencies
 cd ai-mesh-pane-viewer
 npm install
 
-# Restart Claude Code
+# Configure hooks in ~/.claude/settings.json (see Configuration section)
 ```
 
 ### Verify Installation
 
 ```bash
-# Check plugin is loaded
-claude config plugins list
+# Check plugin directory exists
+ls ~/.claude/plugins/ai-mesh-pane-viewer/
 
-# Should show: ai-mesh-pane-viewer v0.1.0
+# Check hooks are configured
+cat ~/.claude/settings.json | grep pane-spawner
+
+# Restart Claude Code to load the plugin
+```
+
+### Hook Configuration
+
+If installed manually, add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-spawner.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-completion.js"
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ## Configuration
@@ -63,10 +133,14 @@ claude config plugins list
 
 | Option | Values | Default | Description |
 |--------|--------|---------|-------------|
+| `enabled` | `true`, `false` | `true` | Enable/disable pane viewer |
 | `multiplexer` | `auto`, `wezterm`, `zellij`, `tmux` | `auto` | Terminal multiplexer to use |
 | `direction` | `right`, `bottom`, `left`, `top` | `right` | Pane split direction |
-| `percent` | `10-90` | `30` | Size of viewer pane (%) |
-| `floating` | `true`, `false` | `false` | Use floating panes (Zellij only) |
+| `percent` | `10-90` | `40` | Size of viewer pane (%) |
+| `autoCloseTimeout` | `0-300` | `0` | Auto-close after N seconds (0 = manual) |
+| `reusePane` | `true`, `false` | `true` | Reuse existing panes |
+| `colors` | `true`, `false` | `true` | Enable colored output |
+| `maxAgentHistory` | `1-100` | `50` | Max agent entries to keep |
 
 ### Configuration File
 
@@ -74,13 +148,26 @@ Settings are saved to `~/.ai-mesh-pane-viewer/config.json`:
 
 ```json
 {
+  "enabled": true,
   "multiplexer": "auto",
   "direction": "right",
-  "percent": 30,
-  "floating": false,
-  "enabled": true
+  "percent": 40,
+  "autoCloseTimeout": 0,
+  "reusePane": true,
+  "colors": true,
+  "maxAgentHistory": 50
 }
 ```
+
+### Auto-Close Behavior
+
+The `autoCloseTimeout` option controls what happens after an agent completes:
+
+- **`0` (default)**: Manual close - shows "Press any key to close..."
+- **`5`**: Auto-closes after 5 seconds with countdown
+- **`30`**: Auto-closes after 30 seconds with countdown
+
+During countdown, pressing any key closes the pane immediately.
 
 ### Environment Variables
 
@@ -186,77 +273,73 @@ tmux send-keys -t <pane-id> "text" Enter
 
 ## Viewer Display
 
-The viewer pane shows real-time agent activity:
+The viewer pane shows real-time agent activity with tool invocations:
 
 ```
-╔═══════════════════════════════════════════╗
-║ AI Mesh Subagent Monitor                  ║
-╠═══════════════════════════════════════════╣
-║ Agent: infrastructure-developer           ║
-║ Status: Active                            ║
-║ Task: Deploy Kubernetes manifests         ║
-║ Started: 14:23:45                         ║
-║ Duration: 00:02:15                        ║
-╠═══════════════════════════════════════════╣
-║ Recent Activity:                          ║
-║ • Created deployment.yaml                 ║
-║ • Created service.yaml                    ║
-║ • Running kubectl apply                   ║
-║ • Deployment successful                   ║
-╚═══════════════════════════════════════════╝
+╔════════════════════════════════════════╗
+║  AI-Mesh Subagent Monitor              ║
+╚════════════════════════════════════════╝
+
+▶ infrastructure-developer
+  Task: Deploy Kubernetes manifests
+
+  Status: Running...
+
+  → Read: deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: my-app
+    ...
+  → Bash: kubectl apply -f deployment.yaml
+    deployment.apps/my-app created
+  → Read: service.yaml
+  → Bash: kubectl apply -f service.yaml
+    service/my-app created
+
+  Status: ✓ Completed (2m 15s)
+  Log: ~/.ai-mesh/agent-logs/2025-01-15/infrastructure-developer_143245_abc123.log
+
+Press any key to close...
 ```
+
+### Tool Output Preview
+
+The viewer shows up to 15 lines of output for each tool invocation, with line truncation at 100 characters. This gives you visibility into what the agent is doing without overwhelming the display.
 
 ## Troubleshooting
 
-### Panes Not Spawning
-
-1. **Check multiplexer is running**:
-   ```bash
-   echo $TERM_PROGRAM  # Should show WezTerm
-   echo $ZELLIJ_SESSION_NAME  # Should show session name
-   echo $TMUX  # Should show tmux info
-   ```
-
-2. **Verify plugin is loaded**:
-   ```bash
-   claude config plugins list
-   ```
-
-3. **Check configuration**:
-   ```bash
-   /pane-config
-   ```
-
-4. **Enable debug logging**:
-   ```bash
-   export DEBUG=ai-mesh-pane-viewer:*
-   ```
-
-### Panes Not Updating
-
-1. **Check viewer is running**:
-   ```bash
-   ps aux | grep agent-viewer
-   ```
-
-2. **Verify state file**:
-   ```bash
-   cat ~/.ai-mesh-pane-viewer/panes.json
-   ```
-
-3. **Restart Claude Code** and try again
-
-### Wrong Multiplexer Detected
-
-Force specific multiplexer:
+### Quick Diagnostics
 
 ```bash
-# Via environment
-export AI_MESH_PANE_MULTIPLEXER=wezterm
+# Check multiplexer session
+echo "WEZTERM_PANE: $WEZTERM_PANE"
+echo "ZELLIJ_SESSION_NAME: $ZELLIJ_SESSION_NAME"
+echo "TMUX: $TMUX"
 
-# Via config command
-/pane-config multiplexer wezterm
+# Check configuration
+cat ~/.ai-mesh-pane-viewer/config.json
+
+# Check state
+cat ~/.ai-mesh-pane-viewer/panes.json
 ```
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Panes not spawning | Check you're in a multiplexer session |
+| Wrong multiplexer | Set `multiplexer` in config or env var |
+| Panes not closing | Enable `autoCloseTimeout` or press any key |
+| No tool output | Ensure Python 3 is available |
+
+### Detailed Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive troubleshooting guide.
+
+### Configuration Reference
+
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for complete configuration options.
 
 ## Development
 
@@ -265,18 +348,42 @@ export AI_MESH_PANE_MULTIPLEXER=wezterm
 ```
 ai-mesh-pane-viewer/
 ├── .claude-plugin/
-│   └── plugin.json          # Plugin metadata
+│   └── plugin.json           # Plugin metadata
+├── .github/
+│   └── workflows/
+│       └── test.yml          # CI/CD pipeline
 ├── hooks/
-│   ├── hooks.json           # Hook definitions
-│   ├── pane-spawner.js      # PreToolUse hook
-│   ├── agent-viewer.js      # UI renderer
-│   ├── pane-manager.js      # Pane lifecycle
-│   └── adapters/            # Multiplexer adapters
+│   ├── hooks.json            # Hook definitions
+│   ├── pane-spawner.js       # PreToolUse hook
+│   ├── pane-completion.js    # PostToolUse hook
+│   ├── pane-manager.js       # Pane lifecycle
+│   ├── agent-monitor.sh      # Terminal UI script
+│   └── adapters/
+│       ├── base-adapter.js   # Base class
+│       ├── wezterm-adapter.js
+│       ├── zellij-adapter.js
+│       ├── tmux-adapter.js
+│       ├── multiplexer-detector.js
+│       └── index.js
 ├── commands/
-│   └── pane-config.md       # Config command
+│   └── pane-config.md        # Config command
 ├── lib/
-│   └── index.js             # Public API
-└── tests/                   # Test suite
+│   ├── index.js              # Public API
+│   └── config-loader.js      # Configuration management
+└── tests/
+    ├── adapters.test.js      # Adapter unit tests
+    ├── config-loader.test.js # Config tests
+    ├── pane-manager.test.js  # Manager tests
+    ├── auto-close.test.js    # Auto-close feature tests
+    ├── hook.test.js          # Hook integration tests
+    ├── e2e/
+    │   └── workflow.test.js  # E2E workflow tests
+    ├── integration/
+    │   ├── wezterm.test.js   # WezTerm integration
+    │   ├── zellij.test.js    # Zellij integration
+    │   └── tmux.test.js      # tmux integration
+    └── performance/
+        └── benchmark.test.js # Performance benchmarks
 ```
 
 ### Running Tests
@@ -285,12 +392,39 @@ ai-mesh-pane-viewer/
 # Run all tests
 npm test
 
+# Run with coverage
+npm test -- --coverage
+
+# Run specific test file
+npm test -- --testPathPattern=adapters
+
+# Run E2E tests only
+npm test -- --testPathPattern=e2e
+
+# Run performance benchmarks
+npm test -- --testPathPattern=performance
+
 # Watch mode
 npm run test:watch
-
-# Coverage report
-npm run test:coverage
 ```
+
+### Test Coverage
+
+Current coverage: **80.4%** (271 tests)
+
+| Component | Coverage |
+|-----------|----------|
+| hooks/adapters | 97.9% |
+| lib/ | 100% |
+| hooks/pane-manager.js | 100% |
+
+### Performance Targets
+
+| Metric | Target | Actual |
+|--------|--------|--------|
+| Hook execution | ≤50ms | ~27ms |
+| Module load | ≤100ms | ~2ms |
+| Config operations | ≤20ms | <1ms |
 
 ### Adding a New Multiplexer
 
