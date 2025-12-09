@@ -11,6 +11,5 @@
   "license": "MIT",
   "keywords": ["monitoring", "subagent", "wezterm", "zellij", "tmux", "terminal", "ai-mesh"],
   "hooks": "./hooks/hooks.json",
-  "commands": "./commands",
-  "engines": { "node": ">=18.0.0" }
+  "commands": "./commands"
 }
