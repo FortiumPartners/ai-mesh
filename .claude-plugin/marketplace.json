@@ -1,0 +1,45 @@
+{
+  "name": "ai-mesh",
+  "version": "1.0.0",
+  "description": "AI Mesh - Agent orchestration, commands, skills, and plugins for Claude Code",
+  "owner": {
+    "name": "Fortium Partners",
+    "email": "support@fortiumpartners.com",
+    "url": "https://github.com/FortiumPartners"
+  },
+  "metadata": {
+    "homepage": "https://github.com/FortiumPartners/ai-mesh",
+    "documentation": "https://github.com/FortiumPartners/ai-mesh#readme",
+    "license": "MIT"
+  },
+  "plugins": [
+    {
+      "name": "ai-mesh-pane-viewer",
+      "source": "./plugins/ai-mesh-pane-viewer",
+      "version": "0.2.0",
+      "description": "Real-time subagent monitoring in terminal panes (WezTerm, Zellij, tmux)",
+      "author": {
+        "name": "Fortium Partners",
+        "email": "support@fortiumpartners.com",
+        "url": "https://github.com/FortiumPartners"
+      },
+      "homepage": "https://github.com/FortiumPartners/ai-mesh/tree/main/plugins/ai-mesh-pane-viewer",
+      "repository": "https://github.com/FortiumPartners/ai-mesh",
+      "license": "MIT",
+      "keywords": [
+        "monitoring",
+        "subagent",
+        "wezterm",
+        "zellij",
+        "tmux",
+        "terminal",
+        "real-time",
+        "ai-mesh"
+      ],
+      "category": "monitoring",
+      "engines": {
+        "node": ">=18.0.0"
+      }
+    }
+  ]
+}
