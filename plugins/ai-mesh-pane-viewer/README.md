@@ -29,27 +29,90 @@ The AI Mesh Pane Viewer is a Claude Code plugin that automatically spawns termin
 - Claude Code installed
 - One of: WezTerm, Zellij, or tmux
 
-### Install Plugin
+### Installation Methods
+
+#### Method 1: Via AI-Mesh Installer (Recommended)
 
 ```bash
-# Clone or download plugin
+# Install ai-mesh which includes the pane viewer plugin
+npx @fortium/ai-mesh install --global
+
+# The plugin is automatically installed to ~/.claude/plugins/ai-mesh-pane-viewer/
+# Hooks are configured in ~/.claude/settings.json
+```
+
+#### Method 2: Via Claude Code Plugin Command
+
+```bash
+# First, add the ai-mesh marketplace (one-time setup)
+/plugin marketplace add https://github.com/FortiumPartners/ai-mesh
+
+# Then install the plugin
+/plugin install ai-mesh-pane-viewer@ai-mesh
+
+# Or browse and install interactively
+/plugin
+```
+
+#### Method 3: Manual Installation
+
+```bash
+# Clone to Claude plugins directory
 cd ~/.claude/plugins/
-git clone https://github.com/FortiumPartners/ai-mesh-pane-viewer.git
+git clone https://github.com/FortiumPartners/ai-mesh.git temp-clone
+mv temp-clone/plugins/ai-mesh-pane-viewer .
+rm -rf temp-clone
 
 # Install dependencies
 cd ai-mesh-pane-viewer
 npm install
 
-# Restart Claude Code
+# Configure hooks in ~/.claude/settings.json (see Configuration section)
 ```
 
 ### Verify Installation
 
 ```bash
-# Check plugin is loaded
-claude config plugins list
+# Check plugin directory exists
+ls ~/.claude/plugins/ai-mesh-pane-viewer/
 
-# Should show: ai-mesh-pane-viewer v0.1.0
+# Check hooks are configured
+cat ~/.claude/settings.json | grep pane-spawner
+
+# Restart Claude Code to load the plugin
+```
+
+### Hook Configuration
+
+If installed manually, add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-spawner.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-completion.js"
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ## Configuration

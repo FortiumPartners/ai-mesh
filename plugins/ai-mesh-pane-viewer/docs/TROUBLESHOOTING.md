@@ -7,20 +7,83 @@ Common issues and solutions for AI Mesh Pane Viewer.
 Run these commands to diagnose issues:
 
 ```bash
-# Check if in a terminal multiplexer session
+# 1. Check plugin is installed
+ls ~/.claude/plugins/ai-mesh-pane-viewer/
+
+# 2. Check hooks are configured
+cat ~/.claude/settings.json | grep -A5 "PreToolUse"
+
+# 3. Check if in a terminal multiplexer session
 echo "WEZTERM_PANE: $WEZTERM_PANE"
 echo "ZELLIJ_SESSION_NAME: $ZELLIJ_SESSION_NAME"
 echo "TMUX: $TMUX"
 
-# Check configuration
+# 4. Check configuration
 cat ~/.ai-mesh-pane-viewer/config.json
 
-# Check state file
+# 5. Check state file
 cat ~/.ai-mesh-pane-viewer/panes.json
 
-# Check recent logs
+# 6. Check recent logs
 ls -la ~/.ai-mesh/agent-logs/$(date +%Y-%m-%d)/
 ```
+
+## Installation Issues
+
+### Plugin Not Found
+
+**Symptom**: Plugin directory doesn't exist or hooks not working.
+
+**Solution**:
+
+```bash
+# Reinstall via ai-mesh
+npx @fortium/ai-mesh install --global
+
+# Or install manually
+cd ~/.claude/plugins/
+git clone https://github.com/FortiumPartners/ai-mesh.git temp
+mv temp/plugins/ai-mesh-pane-viewer .
+rm -rf temp
+cd ai-mesh-pane-viewer && npm install
+```
+
+### Hooks Not Configured
+
+**Symptom**: Plugin installed but panes don't spawn.
+
+**Solution**: Add hooks to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-spawner.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/plugins/ai-mesh-pane-viewer/hooks/pane-completion.js"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Then restart Claude Code.
 
 ## Common Issues
 
