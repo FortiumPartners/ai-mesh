@@ -45,7 +45,7 @@ npx @fortium/ai-mesh install --global
 
 ```bash
 # First, add the ai-mesh marketplace (one-time setup)
-/plugin marketplace add https://github.com/FortiumPartners/ai-mesh
+/plugin marketplace add FortiumPartners/ai-mesh
 
 # Then install the plugin
 /plugin install ai-mesh-pane-viewer@ai-mesh
