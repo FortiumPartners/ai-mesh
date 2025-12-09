@@ -5,7 +5,7 @@
  */
 
 const { PaneManager } = require('../hooks/pane-manager');
-const { ConfigLoader } = require('./config-loader');
+const { loadConfig, saveConfig, resetConfig, DEFAULT_CONFIG } = require('./config-loader');
 const {
   MultiplexerDetector,
   WeztermAdapter,
@@ -13,13 +13,16 @@ const {
   TmuxAdapter
 } = require('../hooks/adapters');
 
+// Re-export config functions as ConfigLoader for backwards compatibility
+const ConfigLoader = { load: loadConfig, save: saveConfig, reset: resetConfig, DEFAULT_CONFIG };
+
 /**
  * Create and initialize a pane viewer
  * @param {Object} options - Initialization options
  * @returns {Promise<Object>} Viewer instance
  */
 async function createViewer(options = {}) {
-  const config = await ConfigLoader.load();
+  const config = loadConfig();
   const manager = new PaneManager();
   await manager.init();
 
